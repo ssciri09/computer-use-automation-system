@@ -1,0 +1,193 @@
+{
+  "schema_version": "1.0.0",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 3,
+  "display_name": "Waive an assessed overdraft fee",
+  "vendor": {
+    "product": "FirstCore Banking Platform",
+    "version_range": ">=4.2,<5.0"
+  },
+  "tenant": {
+    "recorded_for": "tenant_default",
+    "overrides": {}
+  },
+  "surface": {
+    "kind": "web",
+    "entry_url": "http://127.0.0.1:8080/",
+    "allowlist": ["127.0.0.1:8080"]
+  },
+  "inputs": [
+    {
+      "name": "account_id",
+      "type": "string",
+      "required": true,
+      "pattern": "^[0-9]{5,12}$",
+      "sensitivity": "pii",
+      "redact_in_logs": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "outcome",
+      "type": "enum",
+      "values": ["waived", "not_permitted", "not_found"]
+    },
+    { "name": "fee_reference", "type": "string", "required": false },
+    { "name": "confirmation_id", "type": "string", "required": false }
+  ],
+  "credentials": { "ref": "vault://firstcore/operator", "step_scope": ["s1"] },
+
+  "steps": [
+    {
+      "id": "s1",
+      "action": "authenticate",
+      "frame": "top",
+      "fields": [
+        { "locator": { "primary": { "by": "css", "value": "#ext-gen17_u" },
+                       "fallbacks": [ { "by": "css", "value": "input[name='j_username']" } ] },
+          "value_ref": "credentials.username" },
+        { "locator": { "primary": { "by": "css", "value": "#ext-gen19_p" },
+                       "fallbacks": [ { "by": "css", "value": "input[name='j_password']" } ] },
+          "value_ref": "credentials.password" }
+      ],
+      "submit": {
+        "primary": { "by": "css", "value": "#ext-gen21" },
+        "fallbacks": [ { "by": "text", "value": "Sign On", "within": "span.x-btn-text" } ]
+      },
+      "wait_for": { "by": "css", "value": "#ext-comp-1041" },
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s2",
+      "action": "click",
+      "frame": "top",
+      "note": "dismiss the mandatory disclaimer modal",
+      "locator": {
+        "primary": { "by": "css", "value": "#ext-gen33" },
+        "fallbacks": [ { "by": "text", "value": "I Acknowledge" } ]
+      },
+      "wait_for_absent": { "by": "css", "value": "#ext-comp-1041" },
+      "timeout_ms": 10000
+    },
+    {
+      "id": "s3",
+      "action": "click",
+      "frame": { "path": ["navFrm"] },
+      "note": "expand via the tree glyph; clicking the label does not expand",
+      "locator": {
+        "primary": { "by": "css", "value": "#ext-gen89" },
+        "fallbacks": [
+          { "by": "xpath", "value": "//div[.//span[text()='Account Servicing']]/span[@class='x-tree-ec']" }
+        ]
+      },
+      "wait_for": { "by": "css", "value": "#nd-svc div#ext-gen91" },
+      "timeout_ms": 8000
+    },
+    {
+      "id": "s4",
+      "action": "click",
+      "frame": { "path": ["navFrm"] },
+      "locator": {
+        "primary": { "by": "css", "value": "#ext-gen91" },
+        "fallbacks": [ { "by": "text", "value": "Fee Management" } ]
+      },
+      "wait_for": { "by": "css", "value": "#ext-gen42_input", "frame": { "path": ["wrkFrm", "modFrm"] } },
+      "timeout_ms": 20000,
+      "note": "workspace injects a nested iframe after an artificial delay"
+    },
+    {
+      "id": "s5",
+      "action": "type",
+      "frame": { "path": ["wrkFrm", "modFrm"] },
+      "locator": {
+        "primary": { "by": "css", "value": "#ext-gen42_input" },
+        "fallbacks": [ { "by": "css", "value": "input[name='acctNbr']" } ]
+      },
+      "value_ref": "inputs.account_id",
+      "clear_first": true
+    },
+    {
+      "id": "s6",
+      "action": "click",
+      "frame": { "path": ["wrkFrm", "modFrm"] },
+      "locator": {
+        "primary": { "by": "css", "value": "#ext-gen44" },
+        "fallbacks": [
+          { "by": "text", "value": "Execute Inquiry", "within": "span.x-btn-text" },
+          { "by": "coords", "value": [335, 24], "frame_relative": true }
+        ]
+      },
+      "wait_for_absent": { "by": "css", "value": "#loading-spinner" },
+      "timeout_ms": 45000,
+      "assertions": [
+        { "classify": "recoverable",
+          "when": { "by": "text_contains", "value": "HOST-0521" },
+          "retry": { "max_attempts": 4, "backoff_ms": [2000, 5000, 9000] } },
+        { "classify": "business_outcome",
+          "when": { "by": "text_contains", "value": "No records found" },
+          "emit": { "outcome": "not_found" },
+          "terminal": true },
+        { "classify": "success",
+          "when": { "by": "css", "value": "#ext-gen72" } }
+      ]
+    },
+    {
+      "id": "s7",
+      "action": "read",
+      "frame": { "path": ["wrkFrm", "modFrm"] },
+      "locator": { "primary": { "by": "css", "value": "#ext-gen72 td:nth-child(1)" } },
+      "emit": "fee_reference"
+    },
+    {
+      "id": "s8",
+      "action": "click",
+      "frame": { "path": ["wrkFrm", "modFrm"] },
+      "risk": "irreversible",
+      "approval_required": false,
+      "locator": {
+        "primary": { "by": "css", "value": "#ext-gen77" },
+        "fallbacks": [ { "by": "text", "value": "Waive Fee", "within": "span.x-btn-text" } ]
+      },
+      "wait_for_absent": { "by": "css", "value": "#loading-spinner" },
+      "timeout_ms": 30000,
+      "assertions": [
+        { "classify": "success",
+          "when": { "by": "css", "value": "#ext-gen110" },
+          "emit": { "outcome": "waived" } },
+        { "classify": "business_outcome",
+          "when": { "by": "text_equals",
+                    "value": "Error: Account is closed. Fee waiver not permitted." },
+          "emit": { "outcome": "not_permitted" },
+          "terminal": true },
+        { "classify": "hard_failure",
+          "when": { "by": "css", "value": "#secOvl", "frame": "top" },
+          "reason": "security_challenge",
+          "escalate": {
+            "mode": "human_takeover",
+            "context": ["screenshot", "current_step", "account_id_masked"],
+            "resume_at": "s9"
+          } }
+      ]
+    },
+    {
+      "id": "s9",
+      "action": "checkpoint",
+      "frame": { "path": ["wrkFrm", "modFrm"] },
+      "locator": { "primary": { "by": "css", "value": "#ext-gen110" } },
+      "emit": { "outcome": "waived" },
+      "extract": [
+        { "name": "confirmation_id", "by": "regex", "value": "RVSL-[A-F0-9]{8}" }
+      ]
+    }
+  ],
+
+  "redaction": {
+    "log_patterns": [
+      "\\b\\d{5,12}\\b",
+      "RVSL-[A-F0-9]{8}"
+    ],
+    "screenshot_masks": [
+      { "frame": { "path": ["wrkFrm", "modFrm"] }, "selector": "#ext-gen62 .x-grid3-row" }
+    ]
+  }
+}
