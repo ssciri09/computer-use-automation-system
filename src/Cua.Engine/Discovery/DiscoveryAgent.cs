@@ -21,6 +21,7 @@ public sealed record DiscoveryConfig
     public string CredentialsRef { get; init; } = "env://CUA";
     public string Model { get; init; } = "claude-opus-5";
     public string? VendorProduct { get; init; }
+    public SurfaceKind SurfaceKind { get; init; } = SurfaceKind.Web;
     public int MaxModelTurns { get; init; } = 60;
 }
 
@@ -57,7 +58,11 @@ public sealed class DiscoveryAgent(
         var password = CredentialResolver.Resolve(credsRef, "password");
         redactor.AddLiteral(password);
 
-        log.Log("discovery_started", new { goal = config.Goal, entry = config.EntryUrl, model = config.Model });
+        log.Log("discovery_started", new
+        {
+            goal = config.Goal, entry = config.EntryUrl, model = config.Model,
+            surface_kind = config.SurfaceKind,
+        });
 
         var nav = policy.CheckNavigation(config.EntryUrl);
         if (nav.IsBlocked) throw new InvalidOperationException($"entry url blocked by policy: {nav.Reason}");
@@ -65,7 +70,7 @@ public sealed class DiscoveryAgent(
         log.SaveScreenshot(await surface.ScreenshotAsync(ct), "initial");
 
         AnthropicClient client = new();
-        var tools = AgentTools.Build();
+        var tools = AgentTools.Build(config.SurfaceKind);
         var messages = new List<MessageParam>
         {
             new() { Role = Role.User, Content = await InitialUserMessageAsync(config, ct) },
@@ -122,28 +127,20 @@ public sealed class DiscoveryAgent(
     // ---------------------------------------------------------------- prompts
 
     private static string SystemPrompt(DiscoveryConfig config) => $$$"""
-        You are the discovery engine of a computer-use automation system for legacy
-        back-office banking applications. You drive a real browser through tools to
+        You are the discovery engine of a computer-use automation system for
+        back-office applications. You drive a live {{{SurfaceNoun(config.SurfaceKind)}}} through tools to
         accomplish a goal ONCE; what you learn is compiled into a deterministic,
         replayable capability that runs WITHOUT you. Work accordingly: prefer stable,
         explainable interactions over clever ones.
 
         Operating rules:
-        - Frames matter. Legacy apps nest iframes; pass frame_path explicitly on every
-          action ([] = the top document). Modules injected by script may take seconds
-          to exist — if a frame or element is missing, wait_for it or re-observe.
-        - Locators: prefer element ids (css "#the-id"); fall back to name attributes
-          (css "input[name='x']"), then visible text. Never invent selectors you have
-          not seen in an observation.
-        - After ANY action that triggers a host call, wait_for state=absent on the busy
-          indicator before trusting what you observe. Busy indicators can take many
-          seconds on these systems; be patient, not repetitive.
+        {{{OperatingRules(config.SurfaceKind)}}}
         - Credentials: use {{credential:username}} and {{credential:password}}
           placeholders; you never see real values.
         - Run parameters (they parameterize the recorded capability):
           {{{string.Join("; ", config.Parameters.Select(p => $"{p.Key} = \"{p.Value}\""))}}}
           Type parameter values literally where the flow needs them.
-        - Policy: act only on allowlisted hosts. Mark risk=irreversible on any click
+        - Policy: act only on the allowlisted {{{(SurfaceKinds.IsWeb(config.SurfaceKind) ? "hosts" : "applications")}}}. Mark risk=irreversible on any click
           that posts/commits/waives/reverses. Blocked actions return POLICY_BLOCKED —
           do not retry them; find a compliant path or give_up.
         - If you are stuck, call escalate_to_human rather than thrashing.
@@ -162,8 +159,8 @@ public sealed class DiscoveryAgent(
           declare_capability exactly once. Classify: business outcomes (record not
           found, account closed …), recoverable transients (host busy banners) with
           retry policy, and escalations (security/override modals — check which
-          frame they appear in; on legacy apps they often escape to the top
-          document). If a probe raises a blocking modal you cannot clear, do that
+          frame they appear in; on nested surfaces they often escape to the top
+          {{{(config.SurfaceKind == SurfaceKind.Desktop ? "window" : "document")}}}). If a probe raises a blocking modal you cannot clear, do that
           probe LAST — you can still observe its text and then declare.
 
         Tool results include step ids like "recorded step s3" — use those ids in
@@ -171,12 +168,49 @@ public sealed class DiscoveryAgent(
         probe step ids there.
         """;
 
+    private static string SurfaceNoun(SurfaceKind kind) => kind == SurfaceKind.Desktop ? "desktop application" : "browser";
+
+    private static string OperatingRules(SurfaceKind kind) => kind switch
+    {
+        SurfaceKind.Desktop => """
+        - Windows and panes matter. Pass frame_path as the window/pane name path
+          ([] = the main window, ["Fee Management"] = a child pane). If a pane is
+          missing, wait_for it or re-observe.
+        - Locators: prefer AutomationId, written as css "#the-id" (the desktop adapter
+          maps #id → AutomationId). Fall back to Name (css "input[name='x']" or text).
+          Never invent ids you have not seen in an observation. Coordinates are last resort.
+        - After ANY action that triggers a slow host call, wait_for state=absent on the
+          busy indicator before trusting what you observe.
+        """,
+        SurfaceKind.LegacyWeb => """
+        - Frames matter. Legacy apps nest iframes; pass frame_path explicitly on every
+          action ([] = the top document). Modules injected by script may take seconds
+          to exist — if a frame or element is missing, wait_for it or re-observe.
+        - Locators: prefer element ids (css "#the-id"); fall back to name attributes
+          (css "input[name='x']"), then visible text. Never invent selectors you have
+          not seen in an observation. Generated ids (ext-genNN) churn — text and name
+          are real fallbacks.
+        - After ANY action that triggers a host call, wait_for state=absent on the busy
+          indicator before trusting what you observe. Busy indicators can take many
+          seconds on these systems; be patient, not repetitive.
+        """,
+        _ => """
+        - Prefer the main document (frame_path []). Use a frame path only when the
+          observation shows a named iframe.
+        - Locators: prefer stable ids or data-testid (css "#the-id"); fall back to name
+          attributes, then visible text. Never invent selectors you have not seen.
+        - After ANY action that triggers a network or host call, wait_for state=absent
+          on the busy indicator before trusting what you observe.
+        """,
+    };
+
     private async Task<string> InitialUserMessageAsync(DiscoveryConfig config, CancellationToken ct)
     {
         var observation = await surface.ObserveAsync(ct);
         return $"""
             GOAL: {config.Goal}
             TARGET: {config.EntryUrl}
+            SURFACE KIND: {config.SurfaceKind}
             CAPABILITY ID: {config.CapabilityId}
             ALLOWLIST: {string.Join(", ", policy.Config.AllowedHosts)}
 

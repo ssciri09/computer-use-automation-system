@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Cua.Core.Artifacts;
+using Cua.Core.Surface;
 
 namespace Cua.Core.Policy;
 
@@ -16,8 +17,9 @@ public enum RiskyActionMode
 
 public sealed record PolicyConfig
 {
-    /// <summary>host[:port] entries the agent may act on. Everything else is refused.</summary>
+    /// <summary>Allowlist tokens: host[:port] for web kinds, process/app name for desktop.</summary>
     public required IReadOnlyList<string> AllowedHosts { get; init; }
+    public SurfaceKind SurfaceKind { get; init; } = SurfaceKind.Web;
     public IReadOnlyList<StepAction> AllowedActions { get; init; } =
         [StepAction.Navigate, StepAction.Click, StepAction.Type, StepAction.Select, StepAction.Read, StepAction.Checkpoint];
     public RiskyActionMode RiskyMode { get; init; } = RiskyActionMode.Flag;
@@ -50,6 +52,9 @@ public sealed class PolicyGate(PolicyConfig config)
 
     public PolicyDecision CheckNavigation(string url)
     {
+        if (Config.SurfaceKind == SurfaceKind.Desktop)
+            return CheckToken(SurfaceTarget.IdentityOf(url), "target");
+
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
             return new(PolicyVerdict.Blocked, RiskLevel.Safe, $"unparseable url: {url}");
         return IsHostAllowed(uri)
@@ -63,7 +68,17 @@ public sealed class PolicyGate(PolicyConfig config)
         if (!Config.AllowedActions.Contains(action))
             return new(PolicyVerdict.Blocked, declaredRisk, $"action '{action}' is not permitted by policy");
 
-        if (Uri.TryCreate(currentUrl, UriKind.Absolute, out var uri) && !IsHostAllowed(uri))
+        if (Config.SurfaceKind == SurfaceKind.Desktop)
+        {
+            var token = string.IsNullOrWhiteSpace(currentUrl) ? "" : SurfaceTarget.IdentityOf(currentUrl);
+            if (token.Length > 0)
+            {
+                var gate = CheckToken(token, "current app");
+                if (gate.IsBlocked)
+                    return new(PolicyVerdict.Blocked, declaredRisk, gate.Reason);
+            }
+        }
+        else if (Uri.TryCreate(currentUrl, UriKind.Absolute, out var uri) && !IsHostAllowed(uri))
             return new(PolicyVerdict.Blocked, declaredRisk,
                 $"current page host '{uri.Authority}' is outside the allowlist; refusing to act");
 
@@ -89,6 +104,17 @@ public sealed class PolicyGate(PolicyConfig config)
         var matched = Config.RiskyTextPatterns.Any(p => Regex.IsMatch(targetText, p));
         return matched && declared < RiskLevel.Irreversible ? RiskLevel.Irreversible : declared;
     }
+
+    private PolicyDecision CheckToken(string token, string what)
+    {
+        if (IsTokenAllowed(token))
+            return new(PolicyVerdict.Allowed, RiskLevel.Safe, null);
+        return new(PolicyVerdict.Blocked, RiskLevel.Safe,
+            $"{what} '{token}' is not in the allowlist [{string.Join(", ", Config.AllowedHosts)}]");
+    }
+
+    private bool IsTokenAllowed(string token) =>
+        Config.AllowedHosts.Any(h => string.Equals(h, token, StringComparison.OrdinalIgnoreCase));
 
     private bool IsHostAllowed(Uri uri) =>
         Config.AllowedHosts.Any(h =>

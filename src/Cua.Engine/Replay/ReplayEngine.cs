@@ -60,6 +60,7 @@ public sealed class ReplayEngine(
         {
             capability = artifact.CapabilityId,
             version = artifact.CapabilityVersion,
+            surface_kind = artifact.Surface.Kind,
             inputs = inputs.Keys,
             approval = artifact.Provenance.Approval,
         });

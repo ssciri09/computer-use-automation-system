@@ -75,6 +75,21 @@ public sealed class PolicyGateTests
         Assert.Equal(PolicyVerdict.Allowed, d.Verdict);
         Assert.Equal(RiskLevel.Safe, d.EffectiveRisk);
     }
+
+    [Fact]
+    public void DesktopTarget_Allowlist_UsesProcessIdentity()
+    {
+        var gate = new PolicyGate(new PolicyConfig
+        {
+            AllowedHosts = ["FirstCore"],
+            SurfaceKind = SurfaceKind.Desktop,
+        });
+        Assert.False(gate.CheckNavigation(@"C:\Bank\FirstCore.exe").IsBlocked);
+        Assert.False(gate.CheckNavigation("app://FirstCore").IsBlocked);
+        Assert.True(gate.CheckNavigation(@"C:\Bank\OtherTeller.exe").IsBlocked);
+        Assert.False(gate.CheckAction(StepAction.Click, "app://FirstCore", RiskLevel.Safe, "OK").IsBlocked);
+        Assert.True(gate.CheckAction(StepAction.Click, "app://OtherTeller", RiskLevel.Safe, "OK").IsBlocked);
+    }
 }
 
 public sealed class ArtifactJsonTests
@@ -131,6 +146,23 @@ public sealed class ArtifactJsonTests
         Assert.Equal(AssertionClass.BusinessOutcome, back.Steps[0].Assertions[0].Classify);
         Assert.Equal("not_permitted", back.Steps[0].Assertions[0].Emit!["outcome"]);
         Assert.Equal(LocatorKind.Text, back.Steps[0].Locator!.Candidates[1].By);
+        Assert.Equal(SurfaceKind.Web, back.Surface.Kind);
+    }
+
+    [Fact]
+    public void LegacyWebKind_RoundTripsAsSnakeCase()
+    {
+        var artifact = new CapabilityArtifact
+        {
+            CapabilityId = "x",
+            CapabilityVersion = 1,
+            DisplayName = "x",
+            Surface = new SurfaceInfo { Kind = SurfaceKind.LegacyWeb, EntryUrl = "http://x/", Allowlist = ["x"] },
+            Steps = [new StepDef { Id = "s1", Action = StepAction.Click }],
+        };
+        var json = CuaJson.Serialize(artifact);
+        Assert.Contains("\"legacy_web\"", json);
+        Assert.Equal(SurfaceKind.LegacyWeb, CuaJson.Deserialize<CapabilityArtifact>(json).Surface.Kind);
     }
 }
 
@@ -317,6 +349,26 @@ public sealed class ArtifactCompilerTests
         var artifact = Compile();
         Assert.Equal("draft", artifact.Provenance.Approval);
         Assert.Equal("discovery-test", artifact.Provenance.DiscoveryRunId);
+    }
+
+    [Fact]
+    public void StampsSurfaceKind_AndKindSpecificRobustnessNote()
+    {
+        var web = Compile();
+        Assert.Equal(SurfaceKind.Web, web.Surface.Kind);
+
+        var desktopCfg = Config with { SurfaceKind = SurfaceKind.Desktop, EntryUrl = @"C:\Apps\FirstCore.exe" };
+        var desktop = ArtifactCompiler.Compile(new ArtifactCompiler.Input
+        {
+            Config = desktopCfg,
+            Trace = Trace(),
+            Declaration = Declaration(BaseDeclaration),
+            AllowedHosts = ["FirstCore"],
+            RunId = "discovery-test",
+            NextVersion = 1,
+        });
+        Assert.Equal(SurfaceKind.Desktop, desktop.Surface.Kind);
+        Assert.Contains("AutomationId", desktop.Steps.Single(s => s.Id == "s4").Locator!.Robustness);
     }
 }
 

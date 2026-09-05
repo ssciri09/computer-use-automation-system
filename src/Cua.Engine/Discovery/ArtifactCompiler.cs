@@ -46,7 +46,7 @@ public static class ArtifactCompiler
         {
             var t = flow[i];
             guarded.TryGetValue(t.Id, out var guard);
-            steps.Add(CompileStep(t, guard, NextStepPrimary(flow, i, decl), authSteps));
+            steps.Add(CompileStep(t, guard, NextStepPrimary(flow, i, decl), authSteps, input.Config.SurfaceKind));
         }
         steps.Add(CompileCheckpoint(decl));
 
@@ -72,6 +72,7 @@ public static class ArtifactCompiler
             Vendor = input.Config.VendorProduct is null ? null : new VendorInfo { Product = input.Config.VendorProduct },
             Surface = new SurfaceInfo
             {
+                Kind = input.Config.SurfaceKind,
                 EntryUrl = input.Config.EntryUrl,
                 Allowlist = [.. input.AllowedHosts],
             },
@@ -94,7 +95,8 @@ public static class ArtifactCompiler
     // ------------------------------------------------------------------ steps
 
     private static StepDef CompileStep(
-        TraceStep t, GuardedStep? guard, ConditionDef? synthesizedSuccess, HashSet<string> authSteps)
+        TraceStep t, GuardedStep? guard, ConditionDef? synthesizedSuccess, HashSet<string> authSteps,
+        SurfaceKind kind)
     {
         var assertions = new List<AssertionDef>();
         if (guard is not null)
@@ -149,7 +151,7 @@ public static class ArtifactCompiler
             Action = t.Action,
             Phase = authSteps.Contains(t.Id) ? "auth" : "main",
             Frame = t.Frame,
-            Locator = t.Action == StepAction.Navigate ? null : BuildChain(t),
+            Locator = t.Action == StepAction.Navigate ? null : BuildChain(t, kind),
             Value = t.Value,
             ValueRef = t.ValueRef,
             ClearFirst = t.ClearFirst,
@@ -200,7 +202,7 @@ public static class ArtifactCompiler
     /// id → name attribute → visible text (scoped) → frame-relative coordinates,
     /// with the model's original locator kept when it adds anything.
     /// </summary>
-    private static LocatorChain BuildChain(TraceStep t)
+    private static LocatorChain BuildChain(TraceStep t, SurfaceKind kind)
     {
         var candidates = new List<Locator>();
         var meta = t.Meta;
@@ -229,9 +231,7 @@ public static class ArtifactCompiler
         return new LocatorChain
         {
             Candidates = candidates,
-            Robustness = "ranked id → name attribute → scoped visible text → frame-relative coordinates; " +
-                         "auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id " +
-                         "is a genuine fallback, and coordinates are last-resort only",
+            Robustness = LocatorMapping.RobustnessNote(kind),
         };
     }
 

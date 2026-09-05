@@ -51,10 +51,58 @@ public sealed record TenantInfo
         new Dictionary<string, string>();
 }
 
+/// <summary>
+/// Selects the perception/action adapter. Discovery, declare_capability, and
+/// the compiler are kind-agnostic; only ISurface resolution and policy
+/// allowlisting interpret this value.
+/// </summary>
+public enum SurfaceKind
+{
+    Web,
+    LegacyWeb,
+    Desktop,
+}
+
+public static class SurfaceKinds
+{
+    public static SurfaceKind Parse(string? value, SurfaceKind fallback = SurfaceKind.Web)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "web" => SurfaceKind.Web,
+            "legacy_web" or "legacy-web" or "legacy" => SurfaceKind.LegacyWeb,
+            "desktop" or "native" => SurfaceKind.Desktop,
+            _ => throw new ArgumentException(
+                $"unknown surface kind '{value}'; expected web, legacy_web, or desktop"),
+        };
+    }
+
+    /// <summary>Heuristic when --kind is omitted: executables and app:// targets are desktop; everything else is web.</summary>
+    public static SurfaceKind InferFromEntry(string entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry)) return SurfaceKind.Web;
+        var t = entry.Trim();
+        if (t.StartsWith("app:", StringComparison.OrdinalIgnoreCase)) return SurfaceKind.Desktop;
+        if (t.StartsWith("file:", StringComparison.OrdinalIgnoreCase)) return SurfaceKind.Desktop;
+        if (t.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || t.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+            return SurfaceKind.Desktop;
+        if (Uri.TryCreate(t, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            return SurfaceKind.Web;
+        if (t.Contains(':') && !t.Contains("://") && t.Length >= 2 && t[1] == ':')
+            return SurfaceKind.Desktop; // Windows path C:\...
+        if (File.Exists(t)) return SurfaceKind.Desktop;
+        return SurfaceKind.Web;
+    }
+
+    public static bool IsWeb(SurfaceKind kind) => kind is SurfaceKind.Web or SurfaceKind.LegacyWeb;
+}
+
 public sealed record SurfaceInfo
 {
-    /// <summary>web | legacy_web | desktop — selects the perception/action adapter.</summary>
-    public string Kind { get; init; } = "web";
+    /// <summary>Selects the ISurface adapter at discover/replay composition time.</summary>
+    public SurfaceKind Kind { get; init; } = SurfaceKind.Web;
     public required string EntryUrl { get; init; }
     public required IReadOnlyList<string> Allowlist { get; init; }
 }

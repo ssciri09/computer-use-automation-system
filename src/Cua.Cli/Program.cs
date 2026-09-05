@@ -4,9 +4,9 @@ using Cua.Core.Evidence;
 using Cua.Core.Hitl;
 using Cua.Core.Policy;
 using Cua.Core.Redaction;
+using Cua.Core.Surface;
 using Cua.Engine.Discovery;
 using Cua.Engine.Replay;
-using Cua.Web;
 
 LoadDotEnv();
 
@@ -34,26 +34,29 @@ catch (Exception ex)
 static async Task<int> DiscoverAsync(Opts o)
 {
     var goal = o.Require("goal");
-    var url = o.Get("url") ?? "http://127.0.0.1:8080/";
     var capabilityId = o.Require("id");
     var parameters = o.Multi("param");
     var evidenceRoot = o.Get("evidence") ?? "evidence";
-    var allowHosts = ResolveAllowlist(o, url);
+    var url = o.Get("url") ?? "http://127.0.0.1:8080/";
+    var kind = SurfaceKinds.Parse(o.Get("kind"), SurfaceKinds.InferFromEntry(url));
+    var allowHosts = ResolveAllowlist(o, url, kind);
 
     var redactor = Redactor.CreateDefault();
 
     using var log = new RunLogger(evidenceRoot, "discovery", redactor);
     Console.WriteLine($"discovery run {log.RunId}");
     Console.WriteLine($"  goal: {goal}");
+    Console.WriteLine($"  surface: {kind}");
 
     var policy = new PolicyGate(new PolicyConfig
     {
         AllowedHosts = allowHosts,
+        SurfaceKind = kind,
         RiskyMode = ParseRiskyMode(o.Get("risky") ?? "flag"),
         MaxSteps = int.Parse(o.Get("max-steps") ?? "40"),
     });
 
-    await using var surface = await PlaywrightSurface.LaunchAsync(headed: o.Has("headed"));
+    await using var surface = await SurfaceFactory.LaunchAsync(kind, o.Has("headed"));
     var agent = new DiscoveryAgent(surface, policy, log, redactor, new ConsoleOperatorChannel());
     var store = new ArtifactStore(o.Get("out") ?? "capabilities");
 
@@ -66,6 +69,7 @@ static async Task<int> DiscoverAsync(Opts o)
         CredentialsRef = o.Get("cred-ref") ?? "env://CUA",
         Model = o.Get("model") ?? Environment.GetEnvironmentVariable("CUA_MODEL") ?? "claude-opus-5",
         VendorProduct = o.Get("vendor"),
+        SurfaceKind = kind,
     }, store, CancellationToken.None);
 
     Console.WriteLine();
@@ -94,7 +98,7 @@ static async Task<int> ReplayAsync(Opts o)
             redactor.AddPattern(System.Text.RegularExpressions.Regex.Escape(v));
 
     using var log = new RunLogger(evidenceRoot, "replay", redactor);
-    Console.WriteLine($"replay run {log.RunId}  ({artifact.CapabilityId} v{artifact.CapabilityVersion})");
+    Console.WriteLine($"replay run {log.RunId}  ({artifact.CapabilityId} v{artifact.CapabilityVersion} / {artifact.Surface.Kind})");
 
     IOperatorChannel channel = (o.Get("operator") ?? "console") switch
     {
@@ -102,7 +106,7 @@ static async Task<int> ReplayAsync(Opts o)
         _ => new ConsoleOperatorChannel(),
     };
 
-    await using var surface = await PlaywrightSurface.LaunchAsync(headed: o.Has("headed"));
+    await using var surface = await SurfaceFactory.LaunchAsync(artifact.Surface.Kind, o.Has("headed"));
     var engine = new ReplayEngine(surface, channel, log, redactor);
     var result = await engine.RunAsync(artifact, inputs, new ReplayOptions
     {
@@ -153,7 +157,7 @@ static int ListCapabilities(Opts o)
     }
     foreach (var (path, a) in all.OrderBy(x => x.Artifact.CapabilityId).ThenBy(x => x.Artifact.CapabilityVersion))
     {
-        Console.WriteLine($"{a.CapabilityId} v{a.CapabilityVersion} [{a.Provenance.Approval}] — {a.DisplayName}");
+        Console.WriteLine($"{a.CapabilityId} v{a.CapabilityVersion} [{a.Provenance.Approval}] {a.Surface.Kind} — {a.DisplayName}");
         Console.WriteLine($"    inputs:  {string.Join(", ", a.Inputs.Select(i => $"{i.Name}:{i.Type}"))}");
         Console.WriteLine($"    outputs: {string.Join(", ", a.Outputs.Select(x => x.Name + (x.EnumValues is null ? "" : $"({string.Join("|", x.EnumValues)})")))}");
         Console.WriteLine($"    steps: {a.Steps.Count}   file: {path}");
@@ -173,14 +177,18 @@ static int Help()
         cua — computer-use automation: LLM discovery → capability artifact → deterministic replay
 
         verbs:
-          discover  --goal "…" --id <capability_id> [--url <entry>] [--param name=value]…
-                    [--headed] [--model claude-opus-5] [--risky flag|confirm|block]
-                    [--allow-host host:port]… [--cred-ref env://CUA] [--out capabilities]
+          discover  --goal "…" --id <capability_id> [--url <entry>] [--kind web|legacy_web|desktop]
+                    [--param name=value]… [--headed] [--model claude-opus-5] [--risky flag|confirm|block]
+                    [--allow-host host:port]… [--allow-target name]… [--cred-ref env://CUA] [--out capabilities]
           replay    --artifact <path> [--input name=value]… [--headed]
                     [--operator console|queue] [--ack-risk] [--allow-draft]
           approve   --artifact <path>            mark a reviewed artifact approved
           list      [--dir capabilities]          show the capability catalog
           install-browsers                        one-time Playwright Chromium install
+
+        --kind selects the ISurface adapter (web/legacy_web = Playwright, desktop = UI Automation).
+        Omit it to infer: http(s) → web, .exe / file:// / app:// → desktop. Use legacy_web for framesets.
+        Replay always uses the kind stamped on the artifact.
 
         env: ANTHROPIC_API_KEY (discovery), CUA_USERNAME / CUA_PASSWORD (target app sign-on)
         """);
@@ -210,10 +218,13 @@ static void LoadDotEnv()
     }
 }
 
-static IReadOnlyList<string> ResolveAllowlist(Opts o, string entryUrl)
+static IReadOnlyList<string> ResolveAllowlist(Opts o, string entryUrl, SurfaceKind kind)
 {
-    var hosts = o.MultiValues("allow-host").ToList();
-    if (Uri.TryCreate(entryUrl, UriKind.Absolute, out var uri)) hosts.Add(uri.Authority);
+    var hosts = o.MultiValues("allow-host").Concat(o.MultiValues("allow-target")).ToList();
+    if (kind == SurfaceKind.Desktop)
+        hosts.Add(SurfaceTarget.IdentityOf(entryUrl));
+    else if (Uri.TryCreate(entryUrl, UriKind.Absolute, out var uri))
+        hosts.Add(uri.Authority);
     return hosts.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 }
 
