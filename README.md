@@ -26,6 +26,7 @@ and replay logs are in [evidence/](evidence/).
 | `src/Cua.Engine` | Discovery agent (Anthropic API loop + artifact compiler) and the deterministic replay engine. |
 | `src/Cua.Cli` | `cua` command line. |
 | `tests/Cua.Tests` | Unit tests for the load-bearing logic (outcome taxonomy, retries, escalation/resume, guards, policy, redaction, compiler). |
+| `mock-modern-web/` | The modern-web target: a semantic single-document SPA with `data-testid` hooks, `aria-live` status, and a native `<dialog>` modal — the opposite of the legacy mock, so the locator ranking difference is demonstrable. Static; serve with `python -m http.server 8090`. |
 | `mock-legacy-desktop/` | The desktop target: a WinForms thick-client build of the same fee-waiver workflow (late-built module pane, busy indicator removed from the UIA tree, security overlay on the root window outside the module pane). Proves one replay engine drives two surfaces. |
 | `mock-legacy-bank/` | The target: a deliberately hostile mock "FirstCore Banking Platform" (framesets, nested late-injected iframes, `ext-genNN` ids, `<span onclick>` controls, multi-second host latency, security modal that escapes the module frame). Python 3.8+, no dependencies. |
 | `capabilities/` | The capability catalog (recorded artifacts). |
@@ -134,7 +135,18 @@ dotnet run --project src/Cua.Cli -- replay   --artifact capabilities/firstcore.f
 #  --input account_id=00000 --operator queue   # escalation_pending
 ```
 
-**6. The catalog an AI agent would call:**
+**6. The same capability on a modern web app (third binding):**
+
+```bash
+python -m http.server 8090 --directory mock-modern-web   # in another terminal
+
+dotnet run --project src/Cua.Cli -- replay   --artifact capabilities/firstcore.fee_waiver.firstcore-modern.v1.json   --input account_id=12345 --ack-risk
+```
+
+Same contract as the legacy and desktop bindings; the locator chain leans on
+`data-testid` and `aria-label` instead of generated ids.
+
+**7. The catalog an AI agent would call:**
 
 ```bash
 dotnet run --project src/Cua.Cli -- list

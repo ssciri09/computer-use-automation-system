@@ -1,0 +1,12 @@
+{
+  "run_id": "replay-20260905-215647",
+  "capability_id": "firstcore.fee_waiver",
+  "goal": "Look up the account in Fee management and waive the assessed fee, reaching the reversal confirmation.",
+  "step_id": "s7",
+  "reason": "supervisor approval required: manager override PIN",
+  "detail": "posts the reversal \u2014 cannot be undone",
+  "screenshot_path": "evidence\\replay-20260905-215647\\01-escalation-s7.png",
+  "observation_digest": "URL: http://127.0.0.1:8090/\r\n== frame (top) \u0022FirstCore Servicing \u2014 Fee Management\u0022\r\n  field \u003Cinput type=text\u003E id=username name= value=\u0022\u25AE\u25AEREDACTED\u25AE\u25AE\u0022\r\n  field \u003Cinput type=password\u003E id=password name= value=\u0022***\u0022\r\n  field \u003Cinput type=text\u003E id=account name= value=\u0022\u25AE\u25AEREDACTED\u25AE\u25AE\u0022\r\n  field \u003Cinput type=password\u003E id=override-pin name= value=\u0022***\u0022\r\n  control \u003Cbutton\u003E id= text=\u0022Sign in\u0022\r\n  control \u003Cbutton\u003E id= text=\u0022Look up account\u0022\r\n  control \u003Cbutton\u003E id= text=\u0022Waive fee\u0022\r\n  control \u003Cbutton\u003E id= text=\u0022Authorize\u0022\r\n  control \u003Cbutton\u003E id= text=\u0022Cancel\u0022\r\n",
+  "resume_plan": "on handback the run resumes at step checkpoint",
+  "raised_at": "2026-09-05T21:56:56.8751282+00:00"
+}

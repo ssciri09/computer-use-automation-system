@@ -19,8 +19,9 @@ public static class LocatorMapping
             "auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id " +
             "is a genuine fallback, and coordinates are last-resort only",
         _ =>
-            "ranked id / test-id → name attribute → scoped visible text → frame-relative coordinates; " +
-            "prefer stable attributes when the DOM has them, keep text and coordinates as fallbacks",
+            "ranked data-testid → aria-label → id → name attribute → role → visible text → coordinates; " +
+            "test ids and accessible names are contracts the app author published for automation, so they " +
+            "outrank ids, which are implementation detail and change with refactors",
     };
 
     public static DesktopQuery? ToDesktop(Locator loc)

@@ -1,0 +1,206 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FirstCore Servicing — Fee Management</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  FirstCore Servicing (modern build) — the third surface.
+
+  Deliberately the OPPOSITE of mock-legacy-bank in every way that matters to
+  automation: one document (no frames), semantic elements, stable
+  data-testid hooks, aria-label / role / aria-live for state, and no
+  generated ids. Same workflow, same account matrix, same outcome classes —
+  so the same capability contract can be recorded against it and the locator
+  strategy is the only thing that legitimately differs.
+
+  Static: all logic is client side, no server needed beyond a file server.
+-->
+<style>
+  :root { --line:#d8dee9; --ink:#1b2733; --accent:#0b5cad; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; color:var(--ink); background:#f6f8fa; }
+  header { background:var(--accent); color:#fff; padding:14px 22px; font-weight:600; }
+  main { max-width:820px; margin:26px auto; padding:0 18px; }
+  section { background:#fff; border:1px solid var(--line); border-radius:10px; padding:20px; margin-bottom:18px; }
+  h2 { margin:0 0 14px; font-size:17px; }
+  label { display:block; font-weight:600; margin-bottom:6px; font-size:13px; }
+  input { width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:7px; font:inherit; }
+  button { padding:9px 16px; border:0; border-radius:7px; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  button.secondary { background:#e7ecf2; color:var(--ink); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .row { display:flex; gap:12px; align-items:flex-end; }
+  .row > div { flex:1; }
+  .status { padding:11px 14px; border-radius:8px; margin-top:14px; font-size:14px; }
+  .status.busy { background:#eef4fb; color:#0b5cad; }
+  .status.error { background:#fdecea; color:#a32b23; }
+  .status.warn { background:#fdf5e3; color:#8a6512; }
+  .status.ok { background:#e8f5ec; color:#1c6b34; }
+  dl { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:14px 0 0; font-size:14px; }
+  dt { font-weight:600; color:#5a6b7b; }
+  dd { margin:0; }
+  dialog { border:0; border-radius:12px; padding:24px; max-width:420px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
+  dialog::backdrop { background:rgba(15,25,35,.45); }
+  .hidden { display:none; }
+</style>
+
+<header>FirstCore Servicing</header>
+
+<main>
+  <!-- Sign-on -->
+  <section id="signon-section" aria-labelledby="signon-heading">
+    <h2 id="signon-heading">Sign in</h2>
+    <div class="row">
+      <div>
+        <label for="username">User ID</label>
+        <input id="username" data-testid="username" autocomplete="off" aria-label="User ID">
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" data-testid="password" aria-label="Password">
+      </div>
+      <button data-testid="sign-in" aria-label="Sign in">Sign in</button>
+    </div>
+    <p class="status error hidden" data-testid="signon-error" role="alert"></p>
+    <p style="margin:14px 0 0;font-size:13px;color:#5a6b7b">Test credentials: operator / letmein</p>
+  </section>
+
+  <!-- Fee management -->
+  <section id="fee-section" class="hidden" aria-labelledby="fee-heading">
+    <h2 id="fee-heading">Fee management</h2>
+    <div class="row">
+      <div>
+        <label for="account">Account number</label>
+        <input id="account" data-testid="account-number" inputmode="numeric" aria-label="Account number">
+      </div>
+      <button data-testid="look-up-account" aria-label="Look up account">Look up account</button>
+    </div>
+
+    <!-- aria-live: the modern equivalent of the legacy spinner, announced not polled -->
+    <div id="status-region" role="status" aria-live="polite"></div>
+
+    <div id="account-detail" class="hidden">
+      <dl>
+        <dt>Name</dt><dd data-testid="account-name"></dd>
+        <dt>Status</dt><dd data-testid="account-status"></dd>
+        <dt>Assessed fee</dt><dd data-testid="fee-reference"></dd>
+      </dl>
+      <p style="margin-top:16px">
+        <button data-testid="waive-fee" aria-label="Waive fee">Waive fee</button>
+      </p>
+    </div>
+  </section>
+</main>
+
+<!-- Native modal dialog: the modern analogue of the legacy top-frame overlay -->
+<dialog id="override-dialog" data-testid="override-dialog" aria-labelledby="override-heading">
+  <h2 id="override-heading">Supervisor approval required</h2>
+  <p style="font-size:14px;color:#5a6b7b">
+    This account carries a supervisory restriction. Enter a manager override PIN to continue.
+  </p>
+  <label for="override-pin">Override PIN</label>
+  <input id="override-pin" type="password" data-testid="override-pin" maxlength="4" aria-label="Override PIN">
+  <p class="status error hidden" data-testid="override-error" role="alert"></p>
+  <p style="margin-top:18px;display:flex;gap:10px">
+    <button data-testid="authorize" aria-label="Authorize">Authorize</button>
+    <button class="secondary" data-testid="cancel-override" aria-label="Cancel">Cancel</button>
+  </p>
+</dialog>
+
+<script>
+  const SCALE = Number(new URLSearchParams(location.search).get('latency') ?? 1);
+  const wait = s => new Promise(r => setTimeout(r, s * 1000 * SCALE));
+
+  const ACCOUNTS = {
+    '12345': { name: 'M R HOLLOWAY',        status: 'ACTIVE', fee: 'FEE-88213', amount: '35.00' },
+    '55555': { name: 'D P ANANTHAKRISHNAN', status: 'ACTIVE', fee: 'FEE-88401', amount: '35.00' },
+    '99999': { name: 'T L OKONKWO',         status: 'CLOSED', fee: 'FEE-71190', amount: '35.00' },
+    '00000': { name: 'RESTRICTED PARTY',    status: 'ACTIVE', fee: 'FEE-90002', amount: '35.00' },
+  };
+
+  const attempts = {};
+  const $ = sel => document.querySelector(`[data-testid="${sel}"]`);
+  const region = document.getElementById('status-region');
+  const detail = document.getElementById('account-detail');
+  const dialog = document.getElementById('override-dialog');
+  let current = null;
+
+  function say(kind, text) {
+    region.innerHTML = text
+      ? `<p class="status ${kind}" data-testid="status-message">${text}</p>`
+      : '';
+  }
+
+  $('sign-in').addEventListener('click', async () => {
+    const err = $('signon-error');
+    if ($('username').value !== 'operator' || $('password').value !== 'letmein') {
+      err.textContent = 'Sign in failed. Check your user ID and password.';
+      err.classList.remove('hidden');
+      return;
+    }
+    err.classList.add('hidden');
+    await wait(0.4);
+    document.getElementById('signon-section').classList.add('hidden');
+    document.getElementById('fee-section').classList.remove('hidden');
+  });
+
+  $('look-up-account').addEventListener('click', async () => {
+    const id = $('account-number').value.trim();
+    current = id;
+    detail.classList.add('hidden');
+    say('busy', 'Contacting core banking system…');
+    await wait(2.4);
+
+    attempts[id] = (attempts[id] ?? 0) + 1;
+    if (id === '55555' && attempts[id] < 3) {
+      say('warn', 'HOST-0521: Core banking link is congested. Please retry.');
+      return;
+    }
+    const account = ACCOUNTS[id];
+    if (!account) {
+      say('warn', 'No records found for that account number.');
+      return;
+    }
+    say('', '');
+    $('account-name').textContent = account.name;
+    $('account-status').textContent = account.status;
+    $('fee-reference').textContent = `${account.fee} — ${account.amount}`;
+    detail.classList.remove('hidden');
+  });
+
+  $('waive-fee').addEventListener('click', async () => {
+    const account = ACCOUNTS[current];
+    say('busy', 'Posting reversal…');
+    await wait(1.8);
+
+    if (account.status === 'CLOSED') {
+      say('error', 'Account is closed. Fee waiver not permitted.');
+      return;
+    }
+    if (current === '00000') {
+      say('', '');
+      dialog.showModal();
+      return;
+    }
+    confirmWaiver(account);
+  });
+
+  $('authorize').addEventListener('click', async () => {
+    const err = $('override-error');
+    if ($('override-pin').value !== '7391') {
+      err.textContent = 'Override PIN rejected.';
+      err.classList.remove('hidden');
+      return;
+    }
+    err.classList.add('hidden');
+    dialog.close();
+    await wait(0.6);
+    confirmWaiver(ACCOUNTS[current]);
+  });
+
+  $('cancel-override').addEventListener('click', () => dialog.close());
+
+  function confirmWaiver(account) {
+    const id = 'RVSL-' + Math.random().toString(16).slice(2, 10).toUpperCase();
+    say('ok', `Fee ${account.fee} reversed. Credit of ${account.amount} posted. Confirmation ${id}`);
+    detail.classList.add('hidden');
+  }
+</script>

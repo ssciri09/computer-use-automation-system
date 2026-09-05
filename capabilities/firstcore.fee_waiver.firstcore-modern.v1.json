@@ -1,0 +1,391 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 1,
+  "display_name": "Waive an assessed overdraft fee (modern portal)",
+  "description": "Modern-web sibling of the fee-waiver capability. Same contract as the legacy and desktop bindings; the locator chain leans on published automation hooks (data-testid, aria-label) rather than generated ids, and there are no frames.",
+  "goal": "Look up the account in Fee management and waive the assessed fee, reaching the reversal confirmation.",
+  "vendor": {
+    "product": "FirstCore Servicing",
+    "version_range": "\u003E=2.0"
+  },
+  "tenant": {
+    "recorded_for": "tenant_default",
+    "overrides": {}
+  },
+  "surface": {
+    "kind": "web",
+    "entry_url": "http://127.0.0.1:8090/",
+    "allowlist": [
+      "127.0.0.1:8090"
+    ],
+    "app_binding": "firstcore-modern"
+  },
+  "inputs": [
+    {
+      "name": "account_id",
+      "type": "string",
+      "required": true,
+      "pattern": "^[0-9]{3,12}$",
+      "sensitivity": "pii",
+      "redact_in_logs": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "outcome",
+      "type": "enum",
+      "enum_values": [
+        "waived",
+        "not_permitted",
+        "not_found"
+      ],
+      "required": false
+    },
+    {
+      "name": "confirmation_number",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "account_name",
+      "type": "string",
+      "required": false
+    }
+  ],
+  "credentials": {
+    "ref": "env://CUA"
+  },
+  "guards": [
+    {
+      "id": "session-expired",
+      "when": {
+        "by": "css",
+        "value": "[data-testid=\u0027sign-in\u0027]"
+      },
+      "response": "recover_auth",
+      "note": "the sign-in form reappeared mid-run: re-run the auth phase once, then resume"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "action": "type",
+      "phase": "auth",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "[data-testid=\u0027username\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "[aria-label=\u0027User ID\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "#username"
+          }
+        ],
+        "robustness": "test id is the author\u0027s published automation contract; aria-label and id are fallbacks"
+      },
+      "value_ref": "credentials.username",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s2",
+      "action": "type",
+      "phase": "auth",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "[data-testid=\u0027password\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "[aria-label=\u0027Password\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "#password"
+          }
+        ]
+      },
+      "value_ref": "credentials.password",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s3",
+      "action": "click",
+      "phase": "auth",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "[data-testid=\u0027sign-in\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "[aria-label=\u0027Sign in\u0027]"
+          },
+          {
+            "by": "text",
+            "value": "Sign in"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "[data-testid=\u0027account-number\u0027]"
+        },
+        "state": "visible",
+        "timeout_ms": 15000
+      },
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s4",
+      "action": "type",
+      "phase": "main",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "[data-testid=\u0027account-number\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "[aria-label=\u0027Account number\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "#account"
+          }
+        ]
+      },
+      "value_ref": "inputs.account_id",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s5",
+      "action": "click",
+      "phase": "main",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "[data-testid=\u0027look-up-account\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "[aria-label=\u0027Look up account\u0027]"
+          },
+          {
+            "by": "text",
+            "value": "Look up account"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": ".status.busy"
+        },
+        "state": "absent",
+        "timeout_ms": 45000
+      },
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "recoverable",
+          "when": {
+            "by": "text_contains",
+            "value": "HOST-0521"
+          },
+          "terminal": false,
+          "retry": {
+            "max_attempts": 4,
+            "backoff_ms": [
+              2000,
+              4000,
+              8000
+            ]
+          },
+          "note": "core banking link congestion"
+        },
+        {
+          "classify": "business_outcome",
+          "when": {
+            "by": "text_contains",
+            "value": "No records found"
+          },
+          "emit": {
+            "outcome": "not_found"
+          },
+          "terminal": true
+        },
+        {
+          "classify": "success",
+          "when": {
+            "by": "css",
+            "value": "[data-testid=\u0027waive-fee\u0027]"
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 45000,
+      "note": "triggers the core banking call; the aria-live status region is the modern busy indicator"
+    },
+    {
+      "id": "s6",
+      "action": "read",
+      "phase": "main",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "[data-testid=\u0027account-name\u0027]"
+          }
+        ]
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "read_into": "account_name",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s7",
+      "action": "click",
+      "phase": "main",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "[data-testid=\u0027waive-fee\u0027]"
+          },
+          {
+            "by": "css",
+            "value": "[aria-label=\u0027Waive fee\u0027]"
+          },
+          {
+            "by": "text",
+            "value": "Waive fee"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": ".status.busy"
+        },
+        "state": "absent",
+        "timeout_ms": 45000
+      },
+      "risk": "irreversible",
+      "assertions": [
+        {
+          "classify": "business_outcome",
+          "when": {
+            "by": "text_contains",
+            "value": "Account is closed"
+          },
+          "emit": {
+            "outcome": "not_permitted"
+          },
+          "terminal": true
+        },
+        {
+          "classify": "escalate",
+          "when": {
+            "by": "css",
+            "value": "[data-testid=\u0027override-pin\u0027]"
+          },
+          "terminal": false,
+          "escalate": {
+            "reason": "supervisor approval required: manager override PIN",
+            "resume_at": "checkpoint"
+          },
+          "note": "native \u003Cdialog\u003E modal \u2014 same escalation class as the legacy top-frame overlay, no frame hop needed here"
+        },
+        {
+          "classify": "success",
+          "when": {
+            "by": "text_contains",
+            "value": "reversed"
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 45000,
+      "note": "posts the reversal \u2014 cannot be undone"
+    },
+    {
+      "id": "checkpoint",
+      "action": "checkpoint",
+      "phase": "main",
+      "frame": [],
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "success",
+          "when": {
+            "by": "text_contains",
+            "value": "Confirmation RVSL-"
+          },
+          "emit": {
+            "outcome": "waived"
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [
+        {
+          "name": "confirmation_number",
+          "regex": "RVSL-[A-F0-9]{8}"
+        }
+      ],
+      "timeout_ms": 30000,
+      "note": "verifies the reversal posted and extracts the confirmation"
+    }
+  ],
+  "redaction": {
+    "log_patterns": [
+      "RVSL-[A-F0-9]{8}"
+    ]
+  },
+  "provenance": {
+    "approval": "approved"
+  }
+}

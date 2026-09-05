@@ -207,10 +207,26 @@ public static class ArtifactCompiler
     {
         var candidates = new List<Locator>();
         var meta = t.Meta;
+
+        // Modern web is the one surface where the app author left deliberate
+        // automation hooks. Rank them above ids: a test id is a contract, an
+        // id is an implementation detail. On legacy web there are no test ids
+        // and generated ids churn, so the chain leans on text and position;
+        // this is the whole practical difference between the two web kinds.
+        if (kind == SurfaceKind.Web)
+        {
+            if (meta?.TestId is { Length: > 0 } testId)
+                candidates.Add(new Locator { By = LocatorKind.Css, Value = $"[data-testid='{testId}']" });
+            if (meta?.AriaLabel is { Length: > 0 } aria)
+                candidates.Add(new Locator { By = LocatorKind.Css, Value = $"[aria-label='{aria}']" });
+        }
+
         if (meta?.Id is { Length: > 0 } id)
             candidates.Add(new Locator { By = LocatorKind.Css, Value = $"#{id}" });
         if (meta?.Name is { Length: > 0 } name)
             candidates.Add(new Locator { By = LocatorKind.Css, Value = $"{meta.Tag}[name='{name}']" });
+        if (kind == SurfaceKind.Web && meta is { Role.Length: > 0, Text.Length: > 0 and <= 40 })
+            candidates.Add(new Locator { By = LocatorKind.Css, Value = $"[role='{meta.Role}']", Within = null });
         if (t.Action == StepAction.Click && meta?.Text is { Length: > 0 and <= 40 } text)
         {
             var within = meta.Classes?.Split(' ', StringSplitOptions.RemoveEmptyEntries) is [var first, ..]

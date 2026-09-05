@@ -1,0 +1,13 @@
+{"ts":"2026-09-05T21:56:19.7707760\u002B00:00","run_id":"replay-20260905-215615","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":1,"surface_kind":"web","inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T21:56:19.8266815\u002B00:00","run_id":"replay-20260905-215615","kind":"step_started","data":{"step":"s1","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:19.9747748\u002B00:00","run_id":"replay-20260905-215615","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T21:56:19.9757571\u002B00:00","run_id":"replay-20260905-215615","kind":"step_started","data":{"step":"s2","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:20.0323862\u002B00:00","run_id":"replay-20260905-215615","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T21:56:20.0325382\u002B00:00","run_id":"replay-20260905-215615","kind":"step_started","data":{"step":"s3","action":"click","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:20.9240150\u002B00:00","run_id":"replay-20260905-215615","kind":"wait_ok","data":{"step":"s3","value":"[data-testid=\u0027account-number\u0027]","state":"visible"}}
+{"ts":"2026-09-05T21:56:20.9313982\u002B00:00","run_id":"replay-20260905-215615","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T21:56:20.9513649\u002B00:00","run_id":"replay-20260905-215615","kind":"step_started","data":{"step":"s4","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:20.9965925\u002B00:00","run_id":"replay-20260905-215615","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T21:56:21.0076482\u002B00:00","run_id":"replay-20260905-215615","kind":"step_started","data":{"step":"s5","action":"click","frame":[],"risk":"safe","note":"triggers the core banking call; the aria-live status region is the modern busy indicator"}}
+{"ts":"2026-09-05T21:56:23.9184580\u002B00:00","run_id":"replay-20260905-215615","kind":"wait_ok","data":{"step":"s5","value":".status.busy","state":"absent"}}
+{"ts":"2026-09-05T21:56:23.9369907\u002B00:00","run_id":"replay-20260905-215615","kind":"assertion_matched","data":{"step":"s5","class":"business_outcome","when":"TextContains:No records found"}}

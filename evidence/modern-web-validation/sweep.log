@@ -1,0 +1,53 @@
+server:200
+########## HAPPY PATH (account 12345) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:56:02.4447363\u002B00:00","run_id":"replay-20260905-215550","kind":"assertion_matched","data":{"step":"s5","class":"success","when":"Css:[data-testid=\u0027waive-fee\u0027]"}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:04.3885757\u002B00:00","run_id":"replay-20260905-215550","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"TextContains:reversed"}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:04.4092212\u002B00:00","run_id":"replay-20260905-215550","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:Confirmation RVSL-"}}
+  "status": "success",
+    "account_name": "M R HOLLOWAY",
+    "outcome": "waived",
+    "confirmation_number": "RVSL-9D462A34"
+  "outcome": "waived",
+OK  success
+
+########## CLOSED ACCOUNT (account 99999) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:56:13.0101019\u002B00:00","run_id":"replay-20260905-215605","kind":"assertion_matched","data":{"step":"s5","class":"success","when":"Css:[data-testid=\u0027waive-fee\u0027]"}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:14.9864963\u002B00:00","run_id":"replay-20260905-215605","kind":"assertion_matched","data":{"step":"s7","class":"business_outcome","when":"TextContains:Account is closed"}}
+  "status": "business_outcome",
+    "account_name": "T L OKONKWO",
+    "outcome": "not_permitted"
+  "outcome": "not_permitted",
+OUTCOME  business outcome: not_permitted
+
+########## UNKNOWN ACCOUNT (account 77777) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:56:23.9369907\u002B00:00","run_id":"replay-20260905-215615","kind":"assertion_matched","data":{"step":"s5","class":"business_outcome","when":"TextContains:No records found"}}
+  "status": "business_outcome",
+    "outcome": "not_found"
+  "outcome": "not_found",
+OUTCOME  business outcome: not_found
+
+########## TRANSIENT RETRY (account 55555) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:56:29.4064250\u002B00:00","run_id":"replay-20260905-215624","kind":"assertion_matched","data":{"step":"s5","class":"recoverable","when":"TextContains:HOST-0521","note":"core banking link congestion"}.
+  [retry] {"ts":"2026-09-05T21:56:29.4131558\u002B00:00","run_id":"replay-20260905-215624","kind":"retry","data":{"step":"s5","attempt":1,"backoff_ms":2000}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:34.3305958\u002B00:00","run_id":"replay-20260905-215624","kind":"assertion_matched","data":{"step":"s5","class":"recoverable","when":"TextContains:HOST-0521","note":"core banking link congestion"}.
+  [retry] {"ts":"2026-09-05T21:56:34.3309575\u002B00:00","run_id":"replay-20260905-215624","kind":"retry","data":{"step":"s5","attempt":2,"backoff_ms":4000}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:41.0452415\u002B00:00","run_id":"replay-20260905-215624","kind":"assertion_matched","data":{"step":"s5","class":"success","when":"Css:[data-testid=\u0027waive-fee\u0027]"}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:43.9277144\u002B00:00","run_id":"replay-20260905-215624","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"TextContains:reversed"}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:44.1289733\u002B00:00","run_id":"replay-20260905-215624","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:Confirmation RVSL-"}}
+  "status": "success",
+    "account_name": "D P ANANTHAKRISHNAN",
+    "outcome": "waived",
+    "confirmation_number": "RVSL-CC0FCB03"
+  "outcome": "waived",
+
+########## SUPERVISOR ESCALATION (account 00000) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:56:54.3331709\u002B00:00","run_id":"replay-20260905-215647","kind":"assertion_matched","data":{"step":"s5","class":"success","when":"Css:[data-testid=\u0027waive-fee\u0027]"}}
+  [assertion_matched] {"ts":"2026-09-05T21:56:56.7100356\u002B00:00","run_id":"replay-20260905-215647","kind":"assertion_matched","data":{"step":"s7","class":"escalate","when":"Css:[data-testid=\u0027override-pin\u0027]","note":"native \u003C.
+  [intervention_raised] {"ts":"2026-09-05T21:56:56.8931178\u002B00:00","run_id":"replay-20260905-215647","kind":"intervention_raised","data":{"step":"s7","reason":"supervisor approval required: manager override PIN"}}
+  "status": "escalation_pending",
+    "account_name": "RESTRICTED PARTY"
+    "reason": "supervisor approval required: manager override PIN",
+PENDING  escalation pending - session context preserved for the operator
+
+
+[exited with code 0]

@@ -75,6 +75,12 @@ public sealed record ElementMeta
     public required string Tag { get; init; }
     public string? Text { get; init; }
     public string? Classes { get; init; }
+    /// <summary>data-testid / data-test-id — put there deliberately for automation; the most stable rank when present.</summary>
+    public string? TestId { get; init; }
+    /// <summary>Accessible name (aria-label / labelled control), stable across restyles.</summary>
+    public string? AriaLabel { get; init; }
+    /// <summary>Explicit or implicit ARIA role, for role+name targeting.</summary>
+    public string? Role { get; init; }
     /// <summary>Frame-relative center point, for coordinate fallback locators.</summary>
     public double? X { get; init; }
     public double? Y { get; init; }

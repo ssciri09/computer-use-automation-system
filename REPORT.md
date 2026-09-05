@@ -133,6 +133,15 @@ artifact's `surface.kind` selects the adapter at composition time; the engine,
 compiler, and schema never branch on it. Coordinates-as-last-resort exists in
 the chain because it is the one rank that survives bitmap-only surfaces.
 
+Surface kind is not cosmetic — it changes how locators are *ranked*. On modern
+web the compiler puts the author's published automation hooks first
+(`data-testid` → `aria-label` → id → name → role → text → coordinates),
+because a test id is a contract and an id is an implementation detail. On
+legacy web that inverts: there are no test ids, generated `ext-genNN` ids
+churn between releases, so the chain leans on ids then text then position. On
+desktop the same ranks map onto AutomationId and Name. One vocabulary, three
+rankings.
+
 This is validated, not asserted: `mock-legacy-desktop/` is a WinForms build of
 the same fee-waiver workflow with the same obstacles rendered natively — a
 module pane that does not exist until ~1.2s after the nav click, a busy
@@ -142,7 +151,15 @@ engine drives it through all five outcome classes (see
 `evidence/desktop-*`): success with an extracted `RVSL-…` confirmation,
 `not_permitted`, `not_found`, transient congestion retried twice then
 succeeding, and escalation raised because the assertion names the root frame.
-Running it was worth more than reasoning about it — it exposed three real
+A third target, `mock-modern-web/`, is the deliberate opposite of the legacy
+mock — one document, no frames, semantic controls, an `aria-live` status
+region instead of a polled spinner, a native `<dialog>` instead of an overlay
+injected into the top frame — and the same five classes pass there too
+(`evidence/modern-web-validation/`), every assertion resolving on the
+`data-testid` rank. Three bindings of one capability, identical
+inputs/outputs, one replay engine.
+
+Running these was worth more than reasoning about them — it exposed three real
 defects (unresolved relative entry paths, a risk-confirmation that left its
 intervention record `pending` on a successful run, and a leaked app process
 whose stale window silently swallowed clicks). Still cut: human-action

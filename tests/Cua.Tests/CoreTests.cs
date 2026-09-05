@@ -309,6 +309,48 @@ public sealed class ArtifactCompilerTests
     }
 
     [Fact]
+    public void ModernWeb_RanksTestIdAndAriaLabelAboveId_LegacyDoesNot()
+    {
+        var trace = new List<TraceStep>
+        {
+            new()
+            {
+                Id = "s1", Action = StepAction.Click,
+                ModelLocator = new Locator { By = LocatorKind.Css, Value = "#waive" },
+                Meta = new Cua.Core.Surface.ElementMeta
+                {
+                    Id = "waive", Tag = "button", Text = "Waive fee",
+                    TestId = "waive-fee", AriaLabel = "Waive fee", Role = "button", X = 10, Y = 20,
+                },
+            },
+        };
+
+        ArtifactCompiler.Input Build(SurfaceKind kind) => new()
+        {
+            Config = Config with { SurfaceKind = kind },
+            Trace = trace,
+            Declaration = Declaration(BaseDeclaration),
+            AllowedHosts = ["127.0.0.1:8080"],
+            RunId = "r",
+            NextVersion = 1,
+        };
+
+        var modern = ArtifactCompiler.Compile(Build(SurfaceKind.Web))
+            .Steps.Single(s => s.Id == "s1").Locator!.Candidates;
+        Assert.Equal("[data-testid='waive-fee']", modern[0].Value);
+        Assert.Equal("[aria-label='Waive fee']", modern[1].Value);
+        Assert.Equal("#waive", modern[2].Value);
+
+        // legacy web has no published hooks to trust: id leads, text and
+        // coordinates carry the fallback weight
+        var legacy = ArtifactCompiler.Compile(Build(SurfaceKind.LegacyWeb))
+            .Steps.Single(s => s.Id == "s1").Locator!.Candidates;
+        Assert.Equal("#waive", legacy[0].Value);
+        Assert.DoesNotContain(legacy, c => c.Value.Contains("data-testid"));
+        Assert.Equal(LocatorKind.Coords, legacy[^1].By);
+    }
+
+    [Fact]
     public void LocatorChains_RankIdThenNameThenTextThenCoords()
     {
         var artifact = Compile();

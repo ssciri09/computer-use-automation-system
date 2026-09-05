@@ -170,7 +170,7 @@ public sealed class PlaywrightSurface : ISurface
     private static async Task<ElementMeta> ReadMetaAsync(ILocator locator)
     {
         var json = await locator.EvaluateAsync<JsonElement>(
-            "el => { const r = el.getBoundingClientRect(); return { id: el.id || null, name: el.getAttribute('name'), tag: el.tagName.toLowerCase(), text: (el.innerText || el.value || '').trim().slice(0, 120), cls: el.className || null, x: r.x + r.width / 2, y: r.y + r.height / 2 }; }");
+            "el => { const r = el.getBoundingClientRect(); const role = el.getAttribute('role') || ({BUTTON:'button',A:'link',INPUT:'textbox',SELECT:'combobox',TEXTAREA:'textbox'})[el.tagName] || null; return { id: el.id || null, name: el.getAttribute('name'), tag: el.tagName.toLowerCase(), text: (el.innerText || el.value || '').trim().slice(0, 120), cls: el.className || null, testid: el.getAttribute('data-testid') || el.getAttribute('data-test-id') || null, aria: el.getAttribute('aria-label') || null, role: role, x: r.x + r.width / 2, y: r.y + r.height / 2 }; }");
         return new ElementMeta
         {
             Id = GetStr(json, "id"),
@@ -178,6 +178,9 @@ public sealed class PlaywrightSurface : ISurface
             Tag = GetStr(json, "tag") ?? "unknown",
             Text = GetStr(json, "text"),
             Classes = GetStr(json, "cls"),
+            TestId = GetStr(json, "testid"),
+            AriaLabel = GetStr(json, "aria"),
+            Role = GetStr(json, "role"),
             X = json.TryGetProperty("x", out var x) ? x.GetDouble() : null,
             Y = json.TryGetProperty("y", out var y) ? y.GetDouble() : null,
         };

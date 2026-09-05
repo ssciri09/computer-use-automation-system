@@ -1,0 +1,22 @@
+{"ts":"2026-09-05T21:56:49.3946491\u002B00:00","run_id":"replay-20260905-215647","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":1,"surface_kind":"web","inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T21:56:49.4904168\u002B00:00","run_id":"replay-20260905-215647","kind":"step_started","data":{"step":"s1","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:49.8102271\u002B00:00","run_id":"replay-20260905-215647","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T21:56:49.8116519\u002B00:00","run_id":"replay-20260905-215647","kind":"step_started","data":{"step":"s2","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:49.8965352\u002B00:00","run_id":"replay-20260905-215647","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T21:56:49.8968522\u002B00:00","run_id":"replay-20260905-215647","kind":"step_started","data":{"step":"s3","action":"click","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:50.8636534\u002B00:00","run_id":"replay-20260905-215647","kind":"wait_ok","data":{"step":"s3","value":"[data-testid=\u0027account-number\u0027]","state":"visible"}}
+{"ts":"2026-09-05T21:56:50.8862195\u002B00:00","run_id":"replay-20260905-215647","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T21:56:50.9421219\u002B00:00","run_id":"replay-20260905-215647","kind":"step_started","data":{"step":"s4","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:51.0268139\u002B00:00","run_id":"replay-20260905-215647","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T21:56:51.1312383\u002B00:00","run_id":"replay-20260905-215647","kind":"step_started","data":{"step":"s5","action":"click","frame":[],"risk":"safe","note":"triggers the core banking call; the aria-live status region is the modern busy indicator"}}
+{"ts":"2026-09-05T21:56:54.1360950\u002B00:00","run_id":"replay-20260905-215647","kind":"wait_ok","data":{"step":"s5","value":".status.busy","state":"absent"}}
+{"ts":"2026-09-05T21:56:54.3331709\u002B00:00","run_id":"replay-20260905-215647","kind":"assertion_matched","data":{"step":"s5","class":"success","when":"Css:[data-testid=\u0027waive-fee\u0027]"}}
+{"ts":"2026-09-05T21:56:54.3730383\u002B00:00","run_id":"replay-20260905-215647","kind":"step_ok","data":{"step":"s5"}}
+{"ts":"2026-09-05T21:56:54.4047940\u002B00:00","run_id":"replay-20260905-215647","kind":"step_started","data":{"step":"s6","action":"read","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:54.4627983\u002B00:00","run_id":"replay-20260905-215647","kind":"step_ok","data":{"step":"s6"}}
+{"ts":"2026-09-05T21:56:54.4982902\u002B00:00","run_id":"replay-20260905-215647","kind":"risk_flagged","data":{"step":"s7","note":"irreversible step executed under approved artifact \u002B --ack-risk"}}
+{"ts":"2026-09-05T21:56:54.5048128\u002B00:00","run_id":"replay-20260905-215647","kind":"step_started","data":{"step":"s7","action":"click","frame":[],"risk":"irreversible","note":"posts the reversal \u2014 cannot be undone"}}
+{"ts":"2026-09-05T21:56:56.6955112\u002B00:00","run_id":"replay-20260905-215647","kind":"wait_ok","data":{"step":"s7","value":".status.busy","state":"absent"}}
+{"ts":"2026-09-05T21:56:56.7100356\u002B00:00","run_id":"replay-20260905-215647","kind":"assertion_matched","data":{"step":"s7","class":"escalate","when":"Css:[data-testid=\u0027override-pin\u0027]","note":"native \u003Cdialog\u003E modal \u2014 same escalation class as the legacy top-frame overlay, no frame hop needed here"}}
+{"ts":"2026-09-05T21:56:56.8453820\u002B00:00","run_id":"replay-20260905-215647","kind":"screenshot","data":{"label":"escalation-s7","path":"01-escalation-s7.png"}}
+{"ts":"2026-09-05T21:56:56.8931178\u002B00:00","run_id":"replay-20260905-215647","kind":"intervention_raised","data":{"step":"s7","reason":"supervisor approval required: manager override PIN"}}

@@ -1,0 +1,24 @@
+{"ts":"2026-09-05T21:55:57.9944752\u002B00:00","run_id":"replay-20260905-215550","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":1,"surface_kind":"web","inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T21:55:58.1814059\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"s1","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:55:58.3898133\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T21:55:58.3910651\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"s2","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:55:58.4461709\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T21:55:58.4463485\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"s3","action":"click","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:55:59.3403166\u002B00:00","run_id":"replay-20260905-215550","kind":"wait_ok","data":{"step":"s3","value":"[data-testid=\u0027account-number\u0027]","state":"visible"}}
+{"ts":"2026-09-05T21:55:59.3457494\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T21:55:59.3742888\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"s4","action":"type","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:55:59.4375777\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T21:55:59.4508515\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"s5","action":"click","frame":[],"risk":"safe","note":"triggers the core banking call; the aria-live status region is the modern busy indicator"}}
+{"ts":"2026-09-05T21:56:02.4215931\u002B00:00","run_id":"replay-20260905-215550","kind":"wait_ok","data":{"step":"s5","value":".status.busy","state":"absent"}}
+{"ts":"2026-09-05T21:56:02.4447363\u002B00:00","run_id":"replay-20260905-215550","kind":"assertion_matched","data":{"step":"s5","class":"success","when":"Css:[data-testid=\u0027waive-fee\u0027]"}}
+{"ts":"2026-09-05T21:56:02.4540425\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"s5"}}
+{"ts":"2026-09-05T21:56:02.4597954\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"s6","action":"read","frame":[],"risk":"safe"}}
+{"ts":"2026-09-05T21:56:02.4876146\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"s6"}}
+{"ts":"2026-09-05T21:56:02.4938905\u002B00:00","run_id":"replay-20260905-215550","kind":"risk_flagged","data":{"step":"s7","note":"irreversible step executed under approved artifact \u002B --ack-risk"}}
+{"ts":"2026-09-05T21:56:02.4946343\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"s7","action":"click","frame":[],"risk":"irreversible","note":"posts the reversal \u2014 cannot be undone"}}
+{"ts":"2026-09-05T21:56:04.3585091\u002B00:00","run_id":"replay-20260905-215550","kind":"wait_ok","data":{"step":"s7","value":".status.busy","state":"absent"}}
+{"ts":"2026-09-05T21:56:04.3885757\u002B00:00","run_id":"replay-20260905-215550","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"TextContains:reversed"}}
+{"ts":"2026-09-05T21:56:04.3887253\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"s7"}}
+{"ts":"2026-09-05T21:56:04.4024724\u002B00:00","run_id":"replay-20260905-215550","kind":"step_started","data":{"step":"checkpoint","action":"checkpoint","frame":[],"risk":"safe","note":"verifies the reversal posted and extracts the confirmation"}}
+{"ts":"2026-09-05T21:56:04.4092212\u002B00:00","run_id":"replay-20260905-215550","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:Confirmation RVSL-"}}
+{"ts":"2026-09-05T21:56:04.4232076\u002B00:00","run_id":"replay-20260905-215550","kind":"step_ok","data":{"step":"checkpoint"}}
