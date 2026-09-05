@@ -62,13 +62,18 @@ Environment for every command below: `ANTHROPIC_API_KEY` (discovery only),
 
 ```bash
 dotnet run --project src/Cua.Cli -- discover \
-  --goal "Look up the account in Fee Management and waive the assessed overdraft fee, capturing the reversal confirmation id" \
+  --goal "In Fee Management, look up the account and waive the assessed overdraft fee, reaching the reversal confirmation. Record the capability so an agent can waive a fee on any account. Test accounts you may probe to ground outcome conditions: 12345 healthy (use for the recorded flow), 55555 transient host congestion on first attempts, 99999 closed account (writes rejected), 77777 no records, 00000 restricted party whose waive triggers a blocking security modal - probe it last." \
   --id firstcore.fee_waiver \
   --url http://127.0.0.1:8080/ \
   --vendor "FirstCore Banking Platform" \
   --param account_id=12345 \
   --headed
 ```
+
+The goal hands the model a tester's account matrix on purpose: after completing
+the recorded flow it **probes** the variant accounts (probe actions are excluded
+from the compiled flow) so every declared outcome condition is grounded in text
+it actually observed — see REPORT.md §3 for the failure mode this prevents.
 
 This emits `capabilities/firstcore.fee_waiver.v1.json` (a **draft**) and full
 evidence under `evidence/discovery-*/` (JSONL log, redacted model transcript,

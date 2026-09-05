@@ -22,6 +22,12 @@ public static class AgentTools
         description = "Locator strategy. Prefer css with an #id; use text for controls without ids.",
     };
 
+    private static readonly object ProbeProp = new
+    {
+        type = "boolean",
+        description = "true = exploratory probe to OBSERVE an outcome state (e.g. trying a variant input to see its error text). Probe actions are EXCLUDED from the recorded flow and must not be referenced from declare_capability.",
+    };
+
     public static List<ToolUnion> Build() =>
     [
         Make("click",
@@ -33,6 +39,7 @@ public static class AgentTools
                 ["value"] = new { type = "string", description = "Selector or visible text." },
                 ["within"] = new { type = "string", description = "Optional CSS scope for text locators, e.g. \"span.x-btn-text\"." },
                 ["risk"] = new { type = "string", @enum = new[] { "safe", "write", "irreversible" } },
+                ["probe"] = ProbeProp,
                 ["note"] = new { type = "string", description = "Short human-readable purpose of this click." },
             }, ["frame_path", "by", "value"]),
 
@@ -45,6 +52,7 @@ public static class AgentTools
                 ["value"] = new { type = "string" },
                 ["text"] = new { type = "string", description = "Text to type (or a credential placeholder)." },
                 ["clear_first"] = new { type = "boolean" },
+                ["probe"] = ProbeProp,
                 ["note"] = new { type = "string" },
             }, ["frame_path", "by", "value", "text"]),
 
@@ -56,6 +64,7 @@ public static class AgentTools
                 ["by"] = ByProp,
                 ["value"] = new { type = "string" },
                 ["option"] = new { type = "string" },
+                ["probe"] = ProbeProp,
             }, ["frame_path", "by", "value", "option"]),
 
         Make("read",
@@ -66,6 +75,7 @@ public static class AgentTools
                 ["by"] = ByProp,
                 ["value"] = new { type = "string" },
                 ["output_name"] = new { type = "string" },
+                ["probe"] = ProbeProp,
             }, ["frame_path", "by", "value", "output_name"]),
 
         Make("wait_for",

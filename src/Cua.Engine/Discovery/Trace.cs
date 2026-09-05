@@ -26,4 +26,6 @@ public sealed record TraceStep
     public RiskLevel Risk { get; init; } = RiskLevel.Safe;
     public string? ReadInto { get; init; }
     public string? Note { get; init; }
+    /// <summary>Exploratory action used to observe an outcome state; excluded from the compiled flow.</summary>
+    public bool Probe { get; init; }
 }

@@ -34,12 +34,14 @@ public static class ArtifactCompiler
         var authSteps = StringSet(decl, "auth_steps");
         var guarded = ParseGuardedSteps(decl);
 
+        // Probe steps grounded the declaration but are not part of the flow.
+        var flow = input.Trace.Where(t => !t.Probe).ToList();
         var steps = new List<StepDef>();
-        for (var i = 0; i < input.Trace.Count; i++)
+        for (var i = 0; i < flow.Count; i++)
         {
-            var t = input.Trace[i];
+            var t = flow[i];
             guarded.TryGetValue(t.Id, out var guard);
-            steps.Add(CompileStep(t, guard, NextStepPrimary(input.Trace, i, decl), authSteps));
+            steps.Add(CompileStep(t, guard, NextStepPrimary(flow, i, decl), authSteps));
         }
         steps.Add(CompileCheckpoint(decl));
 
@@ -247,7 +249,7 @@ public static class ArtifactCompiler
         // credentials went into reappears mid-run, the session was lost — rerun
         // the auth phase once, then resume.
         if (authSteps.Count == 0) return [];
-        var userStep = trace.FirstOrDefault(t => t.ValueRef == "credentials.username");
+        var userStep = trace.FirstOrDefault(t => !t.Probe && t.ValueRef == "credentials.username");
         if (userStep?.Meta is null) return [];
         var value = userStep.Meta.Id is { Length: > 0 } id
             ? $"#{id}"

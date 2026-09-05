@@ -113,6 +113,22 @@ stable):
   messages, a screenshot, and a full observation dump — enough to debug
   without rerunning.
 
+**Grounding declared conditions — a failure we found and fixed.** The first
+live discovery run produced a structurally perfect artifact with a subtle
+poison: the model had only *seen* the happy path, so it **invented** the text
+for outcome conditions it never observed (`"HOST BUSY"` where the app actually
+says `HOST-0521: Legacy host link congested`; `"ACCOUNT NOT FOUND"` where it
+says `No records found…`). Those replays would hard-fail instead of
+classifying — a hallucinated condition is worse than an undeclared one,
+because it looks reviewable. The fix is in the system, not the prompt alone:
+discovery actions accept a `probe` flag (exploratory, excluded from the
+compiled flow), the agent is required to ground every declared condition in
+observed text — probing variant inputs after the main flow to *trigger* each
+error state and read its exact wording — and to leave unobservable states
+undeclared. Run 1 is kept in `/evidence/` as the documented failure mode; the
+shipped artifact comes from the probe-grounded run 2. The `draft → approved`
+human review exists for exactly this class of defect.
+
 UI drift (secondary here): the locator chain absorbs id churn; every fallback
 hit is logged as a drift signal; `approval` + versioning make re-recording a
 controlled event rather than a silent behavior change.

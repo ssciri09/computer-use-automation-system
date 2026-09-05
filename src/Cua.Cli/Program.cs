@@ -8,6 +8,8 @@ using Cua.Engine.Discovery;
 using Cua.Engine.Replay;
 using Cua.Web;
 
+LoadDotEnv();
+
 var args0 = args.Length > 0 ? args[0] : "help";
 try
 {
@@ -183,6 +185,29 @@ static int Help()
         env: ANTHROPIC_API_KEY (discovery), CUA_USERNAME / CUA_PASSWORD (target app sign-on)
         """);
     return 0;
+}
+
+/// <summary>Loads .env from the working directory (and its parents, nearest wins) without overriding real environment variables. Values never get logged.</summary>
+static void LoadDotEnv()
+{
+    var dir = Directory.GetCurrentDirectory();
+    for (var depth = 0; dir is not null && depth < 4; depth++, dir = Path.GetDirectoryName(dir))
+    {
+        var file = Path.Combine(dir, ".env");
+        if (!File.Exists(file)) continue;
+        foreach (var raw in File.ReadAllLines(file))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#')) continue;
+            var idx = line.IndexOf('=');
+            if (idx <= 0) continue;
+            var key = line[..idx].Trim();
+            var value = line[(idx + 1)..].Trim().Trim('"');
+            if (Environment.GetEnvironmentVariable(key) is null)
+                Environment.SetEnvironmentVariable(key, value);
+        }
+        return; // nearest .env wins
+    }
 }
 
 static IReadOnlyList<string> ResolveAllowlist(Opts o, string entryUrl)

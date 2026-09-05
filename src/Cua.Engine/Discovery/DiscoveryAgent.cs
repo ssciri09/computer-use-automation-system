@@ -147,15 +147,28 @@ public sealed class DiscoveryAgent(
           that posts/commits/waives/reverses. Blocked actions return POLICY_BLOCKED —
           do not retry them; find a compliant path or give_up.
         - If you are stuck, call escalate_to_human rather than thrashing.
-        - Goal met and final state visible → call declare_capability exactly once.
-          Classify every runtime outcome you can foresee on this kind of screen:
-          business outcomes (record not found, account closed …), recoverable
-          transients (host busy banners) with retry policy, and escalations
-          (security/override modals — check which frame they appear in; on legacy
-          apps they often escape to the top document).
+        - GROUNDING (critical): every condition you declare in declare_capability —
+          business outcomes, recoverable transients, escalations, success checks —
+          must be text or structure you ACTUALLY OBSERVED during this session.
+          Never guess or paraphrase an error message you have not seen: replay
+          matches your strings verbatim against the live screen, so an invented
+          string is a broken artifact. If test/variant inputs are available, use
+          probe actions (probe=true on click/type/select/read) AFTER completing and
+          verifying the main flow, to trigger each outcome state and read its exact
+          wording. Probe steps are excluded from the recorded flow. If you cannot
+          observe a state, leave it undeclared rather than inventing it.
+        - Goal met and final state visible → first finish the recorded flow, then
+          probe variant inputs to ground your outcome conditions, then call
+          declare_capability exactly once. Classify: business outcomes (record not
+          found, account closed …), recoverable transients (host busy banners) with
+          retry policy, and escalations (security/override modals — check which
+          frame they appear in; on legacy apps they often escape to the top
+          document). If a probe raises a blocking modal you cannot clear, do that
+          probe LAST — you can still observe its text and then declare.
 
         Tool results include step ids like "recorded step s3" — use those ids in
-        declare_capability (auth_steps, guarded_steps.after_step).
+        declare_capability (auth_steps, guarded_steps.after_step). Never reference
+        probe step ids there.
         """;
 
     private async Task<string> InitialUserMessageAsync(DiscoveryConfig config, CancellationToken ct)
@@ -312,8 +325,9 @@ public sealed class DiscoveryAgent(
             ValueRef = valueRef,
             ClearFirst = clearFirst,
             Note = Str(tu, "note"),
+            Probe = Probe(tu),
         });
-        return $"OK — recorded step {step.Id} (typed into {Describe(target.Meta)}" +
+        return $"OK — {StepLabel(step)} (typed into {Describe(target.Meta)}" +
                $"{(valueRef is null ? "" : $", parameterized as {valueRef}")}).";
     }
 
@@ -329,8 +343,9 @@ public sealed class DiscoveryAgent(
         {
             Id = NextId(), Action = StepAction.Select, Frame = frame,
             ModelLocator = locator, Meta = target.Meta, Value = option,
+            Probe = Probe(tu),
         });
-        return $"OK — recorded step {step.Id} (selected \"{option}\").";
+        return $"OK — {StepLabel(step)} (selected \"{option}\").";
     }
 
     private async Task<string> DoReadAsync(ToolUseBlock tu, CancellationToken ct)
@@ -345,8 +360,9 @@ public sealed class DiscoveryAgent(
         {
             Id = NextId(), Action = StepAction.Read, Frame = frame,
             ModelLocator = locator, Meta = target.Meta, ReadInto = outputName,
+            Probe = Probe(tu),
         });
-        return $"OK — recorded step {step.Id} (read {outputName} = \"{text}\").";
+        return $"OK — {StepLabel(step)} (read {outputName} = \"{text}\").";
     }
 
     private async Task<string> DoWaitAsync(ToolUseBlock tu, CancellationToken ct)
@@ -455,12 +471,15 @@ public sealed class DiscoveryAgent(
         {
             step = step.Id, action = step.Action, frame = step.Frame,
             locator = step.ModelLocator?.Value, target = step.Meta?.Id ?? step.Meta?.Text,
-            value_ref = step.ValueRef, risk = step.Risk,
+            value_ref = step.ValueRef, risk = step.Risk, probe = step.Probe,
         });
         return step;
     }
 
     private string NextId() => $"s{++_stepCounter}";
+
+    private static string StepLabel(TraceStep step) =>
+        step.Probe ? $"probe step {step.Id} (NOT part of the recorded flow)" : $"recorded step {step.Id}";
 
     private static string NotResolved(Locator locator, IReadOnlyList<string> frame) =>
         $"NOT_FOUND: {locator.By}:{locator.Value} did not resolve to a visible element in frame " +
@@ -517,6 +536,9 @@ public sealed class DiscoveryAgent(
             usage = new { input = response.Usage.InputTokens, output = response.Usage.OutputTokens },
         });
     }
+
+    private static bool Probe(ToolUseBlock tu) =>
+        tu.Input.TryGetValue("probe", out var p) && p.ValueKind == JsonValueKind.True;
 
     private static string? Str(ToolUseBlock tu, string key) =>
         tu.Input.TryGetValue(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
