@@ -1,5 +1,8 @@
 # Design write-up
 
+Diagrams for every section below are in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## 1. Architecture
 
 Four assemblies with one-way, compiler-enforced dependencies, arranged around

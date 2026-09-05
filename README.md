@@ -14,8 +14,9 @@ goal (NL) ──► LLM discovery loop ──► capability artifact ──► d
                                                                         └──► human takeover of the live session when stuck
 ```
 
-The design write-up is in [REPORT.md](REPORT.md). Example artifact, discovery
-and replay logs are in [evidence/](evidence/).
+The design write-up is in [REPORT.md](REPORT.md), with diagrams in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Example artifacts, discovery and
+replay logs are in [evidence/](evidence/).
 
 ## Layout
 
