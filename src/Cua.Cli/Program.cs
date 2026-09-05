@@ -69,6 +69,7 @@ static async Task<int> DiscoverAsync(Opts o)
         CredentialsRef = o.Get("cred-ref") ?? "env://CUA",
         Model = o.Get("model") ?? Environment.GetEnvironmentVariable("CUA_MODEL") ?? "claude-opus-5",
         VendorProduct = o.Get("vendor"),
+        AppBinding = o.Get("binding"),
         SurfaceKind = kind,
     }, store, CancellationToken.None);
 
@@ -177,7 +178,7 @@ static int Help()
         cua — computer-use automation: LLM discovery → capability artifact → deterministic replay
 
         verbs:
-          discover  --goal "…" --id <capability_id> [--url <entry>] [--kind web|legacy_web|desktop]
+          discover  --goal "…" --id <capability_id> [--url <entry>] [--kind web|legacy_web|desktop] [--binding <app>]
                     [--param name=value]… [--headed] [--model claude-opus-5] [--risky flag|confirm|block]
                     [--allow-host host:port]… [--allow-target name]… [--cred-ref env://CUA] [--out capabilities]
           replay    --artifact <path> [--input name=value]… [--headed]

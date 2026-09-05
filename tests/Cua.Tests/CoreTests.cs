@@ -407,3 +407,46 @@ public sealed class ProbePrefixTests
         Assert.Equal(["s1", "checkpoint"], artifact.Steps.Select(s => s.Id).ToArray());
     }
 }
+
+public sealed class ArtifactStoreBindingTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "cua-store-" + Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_dir, recursive: true); } catch { }
+    }
+
+    private static CapabilityArtifact Make(string id, int version, string? binding) => new()
+    {
+        CapabilityId = id,
+        CapabilityVersion = version,
+        DisplayName = id,
+        Surface = new SurfaceInfo { EntryUrl = "http://x/", Allowlist = ["x"], AppBinding = binding },
+        Steps = [],
+    };
+
+    [Fact]
+    public void VersionLines_AreIndependent_PerAppBinding()
+    {
+        var store = new ArtifactStore(_dir);
+        store.Save(Make("fee_waiver", store.NextVersion("fee_waiver", "firstcore-web"), "firstcore-web"));
+        store.Save(Make("fee_waiver", store.NextVersion("fee_waiver", "firstcore-web"), "firstcore-web"));
+
+        // a desktop recording of the same capability is a sibling, not v3
+        Assert.Equal(1, store.NextVersion("fee_waiver", "firstcore-desktop"));
+        Assert.Equal(3, store.NextVersion("fee_waiver", "firstcore-web"));
+        // and artifacts with no binding (this project's existing files) keep their own line
+        Assert.Equal(1, store.NextVersion("fee_waiver"));
+    }
+
+    [Fact]
+    public void SiblingArtifacts_DoNotCollide_OnDisk()
+    {
+        var store = new ArtifactStore(_dir);
+        var web = store.Save(Make("fee_waiver", 1, "firstcore-web"));
+        var desktop = store.Save(Make("fee_waiver", 1, "firstcore-desktop"));
+        Assert.NotEqual(web, desktop);
+        Assert.Equal(2, store.List().Count);
+    }
+}

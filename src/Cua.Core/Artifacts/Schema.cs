@@ -105,6 +105,13 @@ public sealed record SurfaceInfo
     public SurfaceKind Kind { get; init; } = SurfaceKind.Web;
     public required string EntryUrl { get; init; }
     public required IReadOnlyList<string> Allowlist { get; init; }
+    /// <summary>
+    /// Which installed application this artifact drives (e.g. "firstcore-web",
+    /// "firstcore-desktop"). One capability can have sibling artifacts across
+    /// surfaces; versions count per (capability_id, app_binding) so a desktop
+    /// recording is a sibling of the web one, never its "next version".
+    /// </summary>
+    public string? AppBinding { get; init; }
 }
 
 public enum Sensitivity { None, Pii, Secret }

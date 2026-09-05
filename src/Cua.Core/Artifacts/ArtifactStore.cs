@@ -31,7 +31,7 @@ public sealed class ArtifactStore(string directory)
     public string Save(CapabilityArtifact artifact)
     {
         System.IO.Directory.CreateDirectory(Directory);
-        var path = PathFor(artifact.CapabilityId, artifact.CapabilityVersion);
+        var path = PathFor(artifact.CapabilityId, artifact.CapabilityVersion, artifact.Surface.AppBinding);
         File.WriteAllText(path, CuaJson.Serialize(artifact));
         return path;
     }
@@ -39,10 +39,16 @@ public sealed class ArtifactStore(string directory)
     public CapabilityArtifact Load(string path) =>
         CuaJson.Deserialize<CapabilityArtifact>(File.ReadAllText(path));
 
-    public int NextVersion(string capabilityId)
+    /// <summary>
+    /// Versions count per (capability_id, app_binding): the same capability
+    /// recorded against a different installed app (web vs desktop build) is a
+    /// sibling artifact with its own version line, not the next version.
+    /// </summary>
+    public int NextVersion(string capabilityId, string? appBinding = null)
     {
         var versions = List()
-            .Where(a => a.Artifact.CapabilityId == capabilityId)
+            .Where(a => a.Artifact.CapabilityId == capabilityId &&
+                        string.Equals(a.Artifact.Surface.AppBinding, appBinding, StringComparison.OrdinalIgnoreCase))
             .Select(a => a.Artifact.CapabilityVersion);
         return versions.DefaultIfEmpty(0).Max() + 1;
     }
@@ -59,6 +65,8 @@ public sealed class ArtifactStore(string directory)
         return result;
     }
 
-    public string PathFor(string capabilityId, int version) =>
-        Path.Combine(Directory, $"{capabilityId}.v{version}.json");
+    public string PathFor(string capabilityId, int version, string? appBinding = null) =>
+        Path.Combine(Directory, appBinding is null
+            ? $"{capabilityId}.v{version}.json"
+            : $"{capabilityId}.{appBinding}.v{version}.json");
 }

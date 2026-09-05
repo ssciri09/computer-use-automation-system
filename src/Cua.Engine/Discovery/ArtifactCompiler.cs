@@ -73,6 +73,7 @@ public static class ArtifactCompiler
             Surface = new SurfaceInfo
             {
                 Kind = input.Config.SurfaceKind,
+                AppBinding = input.Config.AppBinding,
                 EntryUrl = input.Config.EntryUrl,
                 Allowlist = [.. input.AllowedHosts],
             },

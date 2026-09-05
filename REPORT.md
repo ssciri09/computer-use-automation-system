@@ -168,6 +168,18 @@ replays increasingly resolve on fallback ranks is flagged for re-validation
 before it breaks. Version-range bumps from the vendor trigger re-recording
 once, centrally, not per tenant.
 
+**One tenant, several surfaces.** An institution can run the same capability
+on the web portal, a legacy web console, *and* the thick client. The artifact
+carries an `app_binding` for exactly this: sibling recordings of one
+capability against different installed apps, each with its own version line
+(a desktop recording is never "v3" of the web one — the store versions per
+capability + binding). Callers still ask for the capability; a per-tenant
+routing policy picks the binding deterministically before the run starts —
+explicit pin first, then approval state, then replay-stability history. Reads
+may fail over to a sibling binding on hard failure; writes never auto-fail-over
+past the irreversible step (a fee waived on a dead-looking web session may
+still have posted) — that class escalates to a human instead.
+
 ## 5. Escalation & handoff
 
 **Detecting "stuck".** Three routes: (1) declared `escalate` assertions —

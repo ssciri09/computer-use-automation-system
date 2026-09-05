@@ -22,6 +22,8 @@ public sealed record DiscoveryConfig
     public string Model { get; init; } = "claude-opus-5";
     public string? VendorProduct { get; init; }
     public SurfaceKind SurfaceKind { get; init; } = SurfaceKind.Web;
+    /// <summary>Which installed app this recording binds to (versions count per capability+binding).</summary>
+    public string? AppBinding { get; init; }
     public int MaxModelTurns { get; init; } = 60;
 }
 
@@ -451,7 +453,7 @@ public sealed class DiscoveryAgent(
             Declaration = declaration,
             AllowedHosts = policy.Config.AllowedHosts,
             RunId = log.RunId,
-            NextVersion = store.NextVersion(config.CapabilityId),
+            NextVersion = store.NextVersion(config.CapabilityId, config.AppBinding),
         });
         var path = store.Save(artifact);
         log.Log("artifact_compiled", new { path, steps = artifact.Steps.Count, version = artifact.CapabilityVersion });
