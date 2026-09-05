@@ -376,6 +376,75 @@ public sealed class ReplayEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task TransientAfterIrreversibleStep_NeverRetries_EscalatesInstead()
+    {
+        var surface = new FakeSurface();
+        surface.Present.Add(FakeSurface.Key([], "#waive"));
+        // the irreversible click lands in an ambiguous state: host-busy banner,
+        // no confirmation — did the waive post or not?
+        surface.ClickHandlers["#waive"] = (s, _) => s.Present.Add(FakeSurface.Key([], ".busy"));
+
+        var channel = new FakeOperatorChannel(
+            _ => new InterventionResolution { Resolved = true, OperatorNotes = "verified on host: posted once" },
+            beforeResolve: () =>
+            {
+                surface.Present.Remove(FakeSurface.Key([], ".busy"));
+                surface.Present.Add(FakeSurface.Key([], "#conf"));
+            });
+
+        var artifact = Artifact([
+            new StepDef
+            {
+                Id = "s1", Action = StepAction.Click, Risk = RiskLevel.Irreversible,
+                Locator = new LocatorChain { Candidates = [new Locator { By = LocatorKind.Css, Value = "#waive" }] },
+                Assertions =
+                [
+                    new AssertionDef
+                    {
+                        Classify = AssertionClass.Recoverable,
+                        When = new ConditionDef { By = ConditionKind.Css, Value = ".busy" },
+                        Retry = new RetrySpec { MaxAttempts = 3, BackoffMs = [10] },
+                    },
+                    new AssertionDef
+                    {
+                        Classify = AssertionClass.Success,
+                        When = new ConditionDef { By = ConditionKind.Css, Value = "#conf" },
+                    },
+                ],
+                TimeoutMs = 2000,
+            },
+            new StepDef
+            {
+                Id = "checkpoint", Action = StepAction.Checkpoint,
+                Assertions =
+                [
+                    new AssertionDef
+                    {
+                        Classify = AssertionClass.Success,
+                        When = new ConditionDef { By = ConditionKind.Css, Value = "#conf" },
+                        Emit = new Dictionary<string, string> { ["outcome"] = "waived" },
+                    },
+                ],
+                TimeoutMs = 2000,
+            },
+        ]);
+
+        var (engine, log) = Engine(surface, channel);
+        using (log)
+        {
+            var result = await engine.RunAsync(artifact, new Dictionary<string, string>(),
+                new ReplayOptions { AckRisk = true }, CancellationToken.None);
+
+            // exactly ONE click — the irreversible action was never re-executed
+            Assert.Equal(1, surface.ClickCounts["#waive"]);
+            Assert.Equal(RunStatus.Success, result.Status);
+            Assert.True(result.HumanAssisted);
+            Assert.Single(channel.Requests);
+            Assert.Contains("automatic retry refused", channel.Requests[0].Reason);
+        }
+    }
+
+    [Fact]
     public async Task InputValidation_PatternMismatch_Throws()
     {
         var surface = new FakeSurface();

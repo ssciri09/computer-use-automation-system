@@ -171,6 +171,31 @@ public sealed class ReplayEngine(
                 {
                     case AssertionClass.Recoverable:
                     {
+                        if (step.Risk == RiskLevel.Irreversible)
+                        {
+                            // A transient AFTER an irreversible action is ambiguous:
+                            // the write may or may not have posted. Re-executing
+                            // risks a double-post, so this never retries — it hands
+                            // the session to a human, and the following step
+                            // (typically the checkpoint) re-verifies state on resume.
+                            log.Log("retry_refused", new
+                            {
+                                step = step.Id,
+                                reason = "recoverable condition on an irreversible step: posting state unknown",
+                            });
+                            var resumeAt = await EscalateAsync(step, new AssertionDef
+                            {
+                                Classify = AssertionClass.Escalate,
+                                When = assertion.When,
+                                Escalate = new EscalationSpec
+                                {
+                                    Reason = $"transient condition '{assertion.When.Value}' after an irreversible action — " +
+                                             "posting state unknown; automatic retry refused",
+                                },
+                            }, ct);
+                            return (StepVerdict.Proceed, resumeAt);
+                        }
+
                         var retry = assertion.Retry ?? new RetrySpec();
                         if (attempt >= retry.MaxAttempts)
                             throw await HardAsync(step.Id,

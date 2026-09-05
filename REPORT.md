@@ -102,7 +102,11 @@ stable):
 
 - **Transients** (host-link congestion banner): matched as `recoverable`,
   re-execute the step with declared backoff, bounded attempts; exhaustion is a
-  hard failure ("transient condition persisted"), never a silent loop.
+  hard failure ("transient condition persisted"), never a silent loop. One
+  exception is enforced by the engine, not the artifact: a transient matched
+  on an **irreversible** step never retries — the write may already have
+  posted, so re-executing risks a double-post. It escalates to a human
+  instead, and the checkpoint re-verifies state after handback.
 - **Expected rejections**: matched as `business_outcome`, terminal, and
   reported as a *result* the calling agent can act on.
 - **Unexpected dialogs / session expiry**: artifact-level `guards` checked
