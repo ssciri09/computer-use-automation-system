@@ -32,6 +32,24 @@ public sealed class RedactorTests
     }
 }
 
+public sealed class RedactorDocumentTests
+{
+    [Fact]
+    public void DocumentTier_MasksBystanderDigitRuns_LogTierDoesNot()
+    {
+        var r = Redactor.CreateDefault();
+        var screen = "ACCT 40219 | S J BRENNEMAN | FEE-88220 | 30.00";
+        // log lines keep run ids and timestamps legible
+        Assert.Contains("40219", r.Apply(screen));
+        // captured screen content masks account-shaped digit runs
+        var doc = r.ApplyToDocument(screen);
+        Assert.DoesNotContain("40219", doc);
+        Assert.DoesNotContain("88220", doc);
+        // short numbers (amounts, dates) survive
+        Assert.Contains("30.00", doc);
+    }
+}
+
 public sealed class PolicyGateTests
 {
     private static PolicyGate Gate(RiskyActionMode mode = RiskyActionMode.Flag) =>
@@ -66,6 +84,18 @@ public sealed class PolicyGateTests
             Gate(RiskyActionMode.Block).CheckAction(StepAction.Click, "http://127.0.0.1:8080/", RiskLevel.Irreversible, "Commit Changes").Verdict);
         Assert.Equal(PolicyVerdict.NeedsConfirmation,
             Gate(RiskyActionMode.Confirm).CheckAction(StepAction.Click, "http://127.0.0.1:8080/", RiskLevel.Irreversible, "Commit Changes").Verdict);
+    }
+
+    [Fact]
+    public void RouteScopedAllowlist_LimitsPaths_BareHostAllowsAll()
+    {
+        var gate = new PolicyGate(new PolicyConfig { AllowedHosts = ["127.0.0.1:8080/portal"] });
+        Assert.False(gate.CheckNavigation("http://127.0.0.1:8080/portal/Main.do").IsBlocked);
+        Assert.True(gate.CheckNavigation("http://127.0.0.1:8080/admin/console").IsBlocked);
+        Assert.True(gate.CheckAction(StepAction.Click, "http://127.0.0.1:8080/admin/x", RiskLevel.Safe, "OK").IsBlocked);
+
+        var bare = new PolicyGate(new PolicyConfig { AllowedHosts = ["127.0.0.1:8080"] });
+        Assert.False(bare.CheckNavigation("http://127.0.0.1:8080/anything/at/all").IsBlocked);
     }
 
     [Fact]

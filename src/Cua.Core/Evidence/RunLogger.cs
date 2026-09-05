@@ -56,8 +56,10 @@ public sealed class RunLogger : IDisposable
 
     public string SaveText(string fileName, string content)
     {
+        // Saved documents are captured screen content or result copies —
+        // they get the stricter document tier (bystander digit masking).
         var path = Path.Combine(Dir, fileName);
-        File.WriteAllText(path, _redactor.Apply(content));
+        File.WriteAllText(path, _redactor.ApplyToDocument(content));
         return path;
     }
 

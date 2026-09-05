@@ -430,7 +430,7 @@ public sealed class ReplayEngine(
             Reason = reason,
             Detail = step.Note,
             ScreenshotPath = shot,
-            ObservationDigest = redactor.Apply(observation.ToPromptText(2500)),
+            ObservationDigest = redactor.ApplyToDocument(observation.ToPromptText(2500)),
             ResumePlan = resumePlan,
         };
         _intervention = new InterventionRecord

@@ -218,8 +218,11 @@ and unit-tested.
 
 ## 6. Safety
 
-- **Allowlist enforcement.** Host allowlist checked on every navigation *and*
-  on the current page before every action, discovery and replay alike. The
+- **Allowlist enforcement.** Allowlist checked on every navigation *and*
+  on the current page before every action, discovery and replay alike.
+  Entries can be route-scoped ("host:port/portal" permits only routes under
+  /portal; a bare host permits all routes); on desktop the tokens are
+  process/app identities instead. The
   model can request anything; the gate refuses and tells it why
   (`POLICY_BLOCKED` results are visible in the transcript as evidence).
 - **Risky actions.** Risk is declared per step, and independently *upgraded*
@@ -238,7 +241,12 @@ and unit-tested.
   entry, saved text), so nothing downstream has to remember to be careful:
   secret literals, key/token/SSN patterns, replay input values marked
   `redact_in_logs`, and confirmation-id patterns (outputs go to the caller,
-  not into logs). Password fields are masked at observation time.
+  not into logs). Password fields are masked at observation time. Persisted
+  captures of screen content (failure observation dumps, escalation digests,
+  evidence copies) get a stricter document tier that also masks
+  account-shaped digit runs — bystander customers visible on a shared screen
+  (a fee register, a search result) are protected even when they are not the
+  run's declared inputs.
 - **Limits.** Discovery necessarily exposes on-screen data and parameter
   values to the model — which is why discovery runs against test/sandbox data,
   while replay (the production path) sends nothing anywhere. Redaction is

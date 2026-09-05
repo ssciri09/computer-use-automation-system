@@ -17,7 +17,11 @@ public enum RiskyActionMode
 
 public sealed record PolicyConfig
 {
-    /// <summary>Allowlist tokens: host[:port] for web kinds, process/app name for desktop.</summary>
+    /// <summary>
+    /// Allowlist tokens: host[:port] optionally followed by a path prefix for
+    /// web kinds (e.g. "127.0.0.1:8080/portal" restricts to routes under
+    /// /portal; a bare host allows all routes); process/app name for desktop.
+    /// </summary>
     public required IReadOnlyList<string> AllowedHosts { get; init; }
     public SurfaceKind SurfaceKind { get; init; } = SurfaceKind.Web;
     public IReadOnlyList<StepAction> AllowedActions { get; init; } =
@@ -116,8 +120,31 @@ public sealed class PolicyGate(PolicyConfig config)
     private bool IsTokenAllowed(string token) =>
         Config.AllowedHosts.Any(h => string.Equals(h, token, StringComparison.OrdinalIgnoreCase));
 
-    private bool IsHostAllowed(Uri uri) =>
-        Config.AllowedHosts.Any(h =>
-            string.Equals(h, uri.Authority, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(h, uri.Host, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Host must match an allowlist entry; when the matching entries carry a
+    /// path prefix, the URL's path must fall under at least one of them. A
+    /// bare-host entry allows every route on that host.
+    /// </summary>
+    private bool IsHostAllowed(Uri uri)
+    {
+        var anyHostMatch = false;
+        foreach (var entry in Config.AllowedHosts)
+        {
+            var slash = entry.IndexOf('/');
+            var authority = slash < 0 ? entry : entry[..slash];
+            var pathPrefix = slash < 0 ? null : entry[slash..].TrimEnd('*');
+
+            if (!string.Equals(authority, uri.Authority, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(authority, uri.Host, StringComparison.OrdinalIgnoreCase))
+                continue;
+            anyHostMatch = true;
+
+            if (pathPrefix is null || pathPrefix == "/")
+                return true;
+            if (uri.AbsolutePath.StartsWith(pathPrefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        _ = anyHostMatch; // host matched but every entry was route-scoped and none matched → blocked
+        return false;
+    }
 }
