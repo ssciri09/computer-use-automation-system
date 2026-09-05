@@ -1,0 +1,663 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 2,
+  "display_name": "FirstCore \u2014 Waive Assessed Overdraft Fee",
+  "description": "Signs on to the FirstCore portal, opens Account Servicing \u00BB Fee Management, inquires on the supplied account identifier, and waives (reverses) the assessed overdraft fee, returning the host reversal confirmation number. Classifies no-record accounts, closed accounts (waiver rejected), transient host congestion, and manager-override security interceptions.",
+  "goal": "In Fee Management, look up the account and waive the assessed overdraft fee, reaching the reversal confirmation. Record the capability so an agent can waive a fee on any account. Test accounts you may probe to ground outcome conditions: 12345 healthy (use for the recorded flow), 55555 transient host congestion on first attempts, 99999 closed account (writes rejected), 77777 no records, 00000 restricted party whose waive triggers a blocking security modal - probe it last.",
+  "vendor": {
+    "product": "FirstCore Banking Platform"
+  },
+  "tenant": {
+    "recorded_for": "tenant_default",
+    "overrides": {}
+  },
+  "surface": {
+    "kind": "web",
+    "entry_url": "http://127.0.0.1:8080/",
+    "allowlist": [
+      "127.0.0.1:8080"
+    ]
+  },
+  "inputs": [
+    {
+      "name": "account_id",
+      "type": "string",
+      "required": true,
+      "pattern": "^[0-9]{3,9}$",
+      "sensitivity": "pii",
+      "redact_in_logs": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "outcome",
+      "type": "enum",
+      "enum_values": [
+        "waived",
+        "not_found",
+        "account_closed"
+      ],
+      "required": false
+    },
+    {
+      "name": "confirmation_message",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "confirmation_number",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "fee_ref",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "waived_amount",
+      "type": "string",
+      "required": false
+    }
+  ],
+  "credentials": {
+    "ref": "env://CUA"
+  },
+  "guards": [
+    {
+      "id": "session-expired",
+      "when": {
+        "by": "css",
+        "value": "#ext-gen17_u",
+        "frame": []
+      },
+      "response": "recover_auth",
+      "note": "the sign-on field reappeared mid-run: session expired; re-run the auth phase once and resume"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "action": "type",
+      "phase": "auth",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen17_u"
+          },
+          {
+            "by": "css",
+            "value": "input[name=\u0027j_username\u0027]"
+          },
+          {
+            "by": "coords",
+            "value": "638,401"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "value_ref": "credentials.username",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000,
+      "note": "Enter operator user id"
+    },
+    {
+      "id": "s2",
+      "action": "type",
+      "phase": "auth",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen19_p"
+          },
+          {
+            "by": "css",
+            "value": "input[name=\u0027j_password\u0027]"
+          },
+          {
+            "by": "coords",
+            "value": "638,426"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "value_ref": "credentials.password",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000,
+      "note": "Enter operator password"
+    },
+    {
+      "id": "s3",
+      "action": "click",
+      "phase": "auth",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen21"
+          },
+          {
+            "by": "text",
+            "value": "Sign On",
+            "within": "span.x-btn-text"
+          },
+          {
+            "by": "coords",
+            "value": "592,451"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "escalate",
+          "when": {
+            "by": "text_contains",
+            "value": "SECURITY INTERCEPTION",
+            "frame": []
+          },
+          "terminal": false,
+          "escalate": {
+            "reason": "Security interception raised during sign-on; manager override PIN required.",
+            "resume_at": "s4"
+          }
+        },
+        {
+          "classify": "success",
+          "when": {
+            "by": "css",
+            "value": "#ext-gen33",
+            "frame": []
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 30000,
+      "note": "Sign On"
+    },
+    {
+      "id": "s4",
+      "action": "click",
+      "phase": "auth",
+      "frame": [],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen33"
+          },
+          {
+            "by": "text",
+            "value": "I Acknowledge",
+            "within": "span.x-btn-text"
+          },
+          {
+            "by": "coords",
+            "value": "518,236"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000,
+      "note": "Acknowledge notice"
+    },
+    {
+      "id": "s5",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "navFrm"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen88"
+          },
+          {
+            "by": "text",
+            "value": "\u002B Account Servicing",
+            "within": "div.x-tree-node-el"
+          },
+          {
+            "by": "coords",
+            "value": "108,55"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000,
+      "note": "Expand Account Servicing"
+    },
+    {
+      "id": "s6",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "navFrm"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen89"
+          },
+          {
+            "by": "text",
+            "value": "\u002B",
+            "within": "span.x-tree-ec"
+          },
+          {
+            "by": "coords",
+            "value": "12,56"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000,
+      "note": "Expand Account Servicing via \u002B toggle"
+    },
+    {
+      "id": "s7",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "navFrm"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen91"
+          },
+          {
+            "by": "text",
+            "value": "\u00B7Fee Management",
+            "within": "div.x-tree-node-el"
+          },
+          {
+            "by": "coords",
+            "value": "116,91"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#loading-spinner"
+        },
+        "frame": [
+          "wrkFrm"
+        ],
+        "state": "absent",
+        "timeout_ms": 30000
+      },
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "success",
+          "when": {
+            "by": "css",
+            "value": "#ext-gen42_input",
+            "frame": [
+              "wrkFrm",
+              "modFrm"
+            ]
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 30000,
+      "note": "Open Fee Management"
+    },
+    {
+      "id": "s8",
+      "action": "type",
+      "phase": "main",
+      "frame": [
+        "wrkFrm",
+        "modFrm"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen42_input"
+          },
+          {
+            "by": "css",
+            "value": "input[name=\u0027acctNbr\u0027]"
+          },
+          {
+            "by": "coords",
+            "value": "168,44"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "value_ref": "inputs.account_id",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000,
+      "note": "Enter account id"
+    },
+    {
+      "id": "s9",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "wrkFrm",
+        "modFrm"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen44"
+          },
+          {
+            "by": "text",
+            "value": "Execute Inquiry",
+            "within": "div.x-btn"
+          },
+          {
+            "by": "coords",
+            "value": "297,44"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#loading-spinner"
+        },
+        "frame": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "state": "absent",
+        "timeout_ms": 30000
+      },
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "recoverable",
+          "when": {
+            "by": "text_contains",
+            "value": "HOST-0521: Legacy host link congested. Resubmit inquiry.",
+            "frame": [
+              "wrkFrm",
+              "modFrm"
+            ]
+          },
+          "terminal": false,
+          "retry": {
+            "max_attempts": 4,
+            "backoff_ms": [
+              2000,
+              5000,
+              10000
+            ]
+          },
+          "note": "Observed with account 55555: banner appeared on the first two Execute Inquiry attempts, succeeded on the third. Re-click #ext-gen44 in wrkFrm\u003EmodFrm."
+        },
+        {
+          "classify": "business_outcome",
+          "when": {
+            "by": "text_contains",
+            "value": "No records found for the supplied account identifier.",
+            "frame": [
+              "wrkFrm",
+              "modFrm"
+            ]
+          },
+          "emit": {
+            "outcome": "not_found"
+          },
+          "terminal": true,
+          "note": "Observed with account 77777 \u2014 inquiry returns no account/fee data; flow stops, no waive possible."
+        },
+        {
+          "classify": "escalate",
+          "when": {
+            "by": "text_contains",
+            "value": "SECURITY INTERCEPTION",
+            "frame": []
+          },
+          "terminal": false,
+          "escalate": {
+            "reason": "Manager Override PIN modal injected into the top document during inquiry.",
+            "resume_at": "s10"
+          }
+        },
+        {
+          "classify": "success",
+          "when": {
+            "by": "css",
+            "value": "#ext-gen77",
+            "frame": [
+              "wrkFrm",
+              "modFrm"
+            ]
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 30000,
+      "note": "Execute Inquiry"
+    },
+    {
+      "id": "s10",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "wrkFrm",
+        "modFrm"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen77"
+          },
+          {
+            "by": "text",
+            "value": "Waive Fee",
+            "within": "span.x-btn-text"
+          },
+          {
+            "by": "coords",
+            "value": "816,196"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#loading-spinner"
+        },
+        "frame": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "state": "absent",
+        "timeout_ms": 30000
+      },
+      "risk": "irreversible",
+      "assertions": [
+        {
+          "classify": "business_outcome",
+          "when": {
+            "by": "text_contains",
+            "value": "Error: Account is closed. Fee waiver not permitted.",
+            "frame": [
+              "wrkFrm",
+              "modFrm"
+            ]
+          },
+          "emit": {
+            "outcome": "account_closed"
+          },
+          "terminal": true,
+          "note": "Observed with account 99999 (STATUS CLOSED): the waive post is rejected by the host; no reversal is made."
+        },
+        {
+          "classify": "escalate",
+          "when": {
+            "by": "text_contains",
+            "value": "SECURITY INTERCEPTION: Manager Override PIN Required",
+            "frame": []
+          },
+          "terminal": false,
+          "escalate": {
+            "reason": "Restricted-party waive triggers a blocking Manager Override PIN modal in the TOP document (#ext-gen95 / #ext-gen99_pin / Authorize #ext-gen101). A human with override authority must clear it; the reversal state is unknown until then.",
+            "resume_at": "checkpoint"
+          },
+          "note": "Observed with account 00000 (RESTRICTED PARTY)."
+        },
+        {
+          "classify": "success",
+          "when": {
+            "by": "text_contains",
+            "value": "reversed. Credit of",
+            "frame": [
+              "wrkFrm",
+              "modFrm"
+            ]
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 30000,
+      "note": "Waive Fee for FEE-88213"
+    },
+    {
+      "id": "s11",
+      "action": "read",
+      "phase": "main",
+      "frame": [
+        "wrkFrm",
+        "modFrm"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#ext-gen110"
+          },
+          {
+            "by": "coords",
+            "value": "526,232"
+          }
+        ],
+        "robustness": "ranked id \u2192 name attribute \u2192 scoped visible text \u2192 frame-relative coordinates; auto-generated ids (ext-genNN style) churn across vendor releases, so every rank below id is a genuine fallback, and coordinates are last-resort only"
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "read_into": "confirmation_message",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "checkpoint",
+      "action": "checkpoint",
+      "phase": "main",
+      "frame": [
+        "wrkFrm",
+        "modFrm"
+      ],
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "success",
+          "when": {
+            "by": "text_contains",
+            "value": "reversed. Credit of",
+            "frame": [
+              "wrkFrm",
+              "modFrm"
+            ]
+          },
+          "emit": {
+            "outcome": "waived"
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [
+        {
+          "name": "confirmation_number",
+          "regex": "Confirmation (RVSL-[A-F0-9]{8})"
+        },
+        {
+          "name": "fee_ref",
+          "regex": "Fee (FEE-\\d\u002B) reversed"
+        },
+        {
+          "name": "waived_amount",
+          "regex": "Credit of ([\\d,]\u002B\\.\\d{2}) posted"
+        },
+        {
+          "name": "confirmation_message",
+          "regex": "(Fee FEE-\\d\u002B reversed\\. Credit of [\\d,]\u002B\\.\\d{2} posted to account \\S\u002B\\. Confirmation RVSL-[A-F0-9]{8})"
+        }
+      ],
+      "timeout_ms": 30000,
+      "note": "verifies the goal state and extracts declared outputs"
+    }
+  ],
+  "redaction": {
+    "log_patterns": [
+      "Confirmation (RVSL-[A-F0-9]{8})",
+      "Fee (FEE-\\d\u002B) reversed",
+      "Credit of ([\\d,]\u002B\\.\\d{2}) posted",
+      "(Fee FEE-\\d\u002B reversed\\. Credit of [\\d,]\u002B\\.\\d{2} posted to account \\S\u002B\\. Confirmation RVSL-[A-F0-9]{8})"
+    ]
+  },
+  "provenance": {
+    "recorded_at": "2026-09-05T14:08:04.4356206+00:00",
+    "model": "claude-opus-5",
+    "discovery_run_id": "discovery-20260905-140318",
+    "approval": "approved"
+  }
+}

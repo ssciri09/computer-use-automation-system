@@ -126,8 +126,15 @@ compiled flow), the agent is required to ground every declared condition in
 observed text — probing variant inputs after the main flow to *trigger* each
 error state and read its exact wording — and to leave unobservable states
 undeclared. Run 1 is kept in `/evidence/` as the documented failure mode; the
-shipped artifact comes from the probe-grounded run 2. The `draft → approved`
-human review exists for exactly this class of defect.
+shipped artifact comes from the probe-grounded run 2, where every declared
+string is verbatim app text. Run 2's review still caught two residuals worth
+naming: the model flagged its probe *typing* but not its probe *clicks* (fixed
+in the compiler — the recorded flow is now the contiguous prefix up to the
+first probe step), and it generalized a confirmation-id regex from a single
+example (`RVSL-\d+`, which silently truncates ids containing hex letters —
+corrected to `RVSL-[A-F0-9]{8}` in review, and vindicated when the very next
+replay drew `RVSL-4CB4F665`). The `draft → approved` human review exists for
+exactly this class of defect.
 
 UI drift (secondary here): the locator chain absorbs id churn; every fallback
 hit is logged as a drift signal; `approval` + versioning make re-recording a

@@ -1,0 +1,195 @@
+{
+  "display_name": "FirstCore \u2014 Waive Assessed Overdraft Fee",
+  "description": "Signs on to the FirstCore portal, opens Account Servicing \u00BB Fee Management, inquires on the supplied account identifier, and waives (reverses) the assessed overdraft fee, returning the host reversal confirmation number. Classifies no-record accounts, closed accounts (waiver rejected), transient host congestion, and manager-override security interceptions.",
+  "outputs": [
+    {
+      "name": "outcome",
+      "type": "enum",
+      "enum_values": [
+        "waived",
+        "not_found",
+        "account_closed"
+      ]
+    },
+    {
+      "name": "confirmation_message",
+      "type": "string"
+    },
+    {
+      "name": "confirmation_number",
+      "type": "string"
+    },
+    {
+      "name": "fee_ref",
+      "type": "string"
+    },
+    {
+      "name": "waived_amount",
+      "type": "string"
+    }
+  ],
+  "auth_steps": [
+    "s1",
+    "s2",
+    "s3",
+    "s4"
+  ],
+  "checkpoint": {
+    "frame_path": [
+      "wrkFrm",
+      "modFrm"
+    ],
+    "by": "text_contains",
+    "value": "reversed. Credit of",
+    "emit": {
+      "outcome": "waived"
+    },
+    "extracts": [
+      {
+        "name": "confirmation_number",
+        "regex": "Confirmation (RVSL-\\d\u002B)"
+      },
+      {
+        "name": "fee_ref",
+        "regex": "Fee (FEE-\\d\u002B) reversed"
+      },
+      {
+        "name": "waived_amount",
+        "regex": "Credit of ([\\d,]\u002B\\.\\d{2}) posted"
+      },
+      {
+        "name": "confirmation_message",
+        "regex": "(Fee FEE-\\d\u002B reversed\\. Credit of [\\d,]\u002B\\.\\d{2} posted to account \\S\u002B\\. Confirmation RVSL-\\d\u002B)"
+      }
+    ]
+  },
+  "guarded_steps": [
+    {
+      "after_step": "s3",
+      "success_when": {
+        "frame_path": [],
+        "by": "css",
+        "value": "#ext-gen33"
+      },
+      "escalate": [
+        {
+          "when": {
+            "frame_path": [],
+            "by": "text_contains",
+            "value": "SECURITY INTERCEPTION"
+          },
+          "reason": "Security interception raised during sign-on; manager override PIN required.",
+          "resume_at": "s4"
+        }
+      ]
+    },
+    {
+      "after_step": "s7",
+      "success_when": {
+        "frame_path": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "by": "css",
+        "value": "#ext-gen42_input"
+      }
+    },
+    {
+      "after_step": "s9",
+      "success_when": {
+        "frame_path": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "by": "css",
+        "value": "#ext-gen77"
+      },
+      "business_outcomes": [
+        {
+          "when": {
+            "frame_path": [
+              "wrkFrm",
+              "modFrm"
+            ],
+            "by": "text_contains",
+            "value": "No records found for the supplied account identifier."
+          },
+          "emit": {
+            "outcome": "not_found"
+          },
+          "note": "Observed with account 77777 \u2014 inquiry returns no account/fee data; flow stops, no waive possible."
+        }
+      ],
+      "recoverable": [
+        {
+          "when": {
+            "frame_path": [
+              "wrkFrm",
+              "modFrm"
+            ],
+            "by": "text_contains",
+            "value": "HOST-0521: Legacy host link congested. Resubmit inquiry."
+          },
+          "max_attempts": 4,
+          "backoff_ms": [
+            2000,
+            5000,
+            10000
+          ],
+          "note": "Observed with account 55555: banner appeared on the first two Execute Inquiry attempts, succeeded on the third. Re-click #ext-gen44 in wrkFrm\u003EmodFrm."
+        }
+      ],
+      "escalate": [
+        {
+          "when": {
+            "frame_path": [],
+            "by": "text_contains",
+            "value": "SECURITY INTERCEPTION"
+          },
+          "reason": "Manager Override PIN modal injected into the top document during inquiry.",
+          "resume_at": "s10"
+        }
+      ]
+    },
+    {
+      "after_step": "s10",
+      "success_when": {
+        "frame_path": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "by": "text_contains",
+        "value": "reversed. Credit of"
+      },
+      "business_outcomes": [
+        {
+          "when": {
+            "frame_path": [
+              "wrkFrm",
+              "modFrm"
+            ],
+            "by": "text_contains",
+            "value": "Error: Account is closed. Fee waiver not permitted."
+          },
+          "emit": {
+            "outcome": "account_closed"
+          },
+          "note": "Observed with account 99999 (STATUS CLOSED): the waive post is rejected by the host; no reversal is made."
+        }
+      ],
+      "escalate": [
+        {
+          "when": {
+            "frame_path": [],
+            "by": "text_contains",
+            "value": "SECURITY INTERCEPTION: Manager Override PIN Required"
+          },
+          "reason": "Restricted-party waive triggers a blocking Manager Override PIN modal in the TOP document (#ext-gen95 / #ext-gen99_pin / Authorize #ext-gen101). A human with override authority must clear it; the reversal state is unknown until then.",
+          "resume_at": "checkpoint",
+          "note": "Observed with account 00000 (RESTRICTED PARTY)."
+        }
+      ]
+    }
+  ],
+  "robustness_notes": "All ids are ExtJS-generated (ext-genNN) and are the only stable handles this build exposes; they were consistent across every screen load in this session, but they are the most likely thing to drift across vendor releases. Fallbacks worth encoding: the account field also has name=\u0027acctNbr\u0027 (input[name=\u0027acctNbr\u0027]); the inquiry and waive buttons carry unique visible text (\u0027Execute Inquiry\u0027, \u0027Waive Fee\u0027). Frame structure: top \u2192 hdrFrm / navFrm / wrkFrm, with the module injected into the nested wrkFrm\u003EmodFrm several seconds after clicking the nav item \u2014 always wait for #ext-gen42_input to exist. The nav tree starts collapsed: \u0027Account Servicing\u0027 must be expanded by clicking the \u002B/- toggle span (#ext-gen89); clicking the group label div (#ext-gen88) alone did not expand it, and Fee Management is not clickable while collapsed. Two distinct busy indicators share id #loading-spinner inside wrkFrm\u003EmodFrm (\u0027Legacy host communication in progress...\u0027 for inquiry, \u0027Posting reversal to host...\u0027 for the waive) \u2014 always wait for state=absent before reading results. The security override modal escapes the module frame and is rendered in the TOP document. The flow waives the single assessed fee row shown (OVERDRAFT ITEM FEE); if a future account lists multiple fee rows there will be multiple \u0027Waive Fee\u0027 controls and the row selection would need to be made explicit."
+}

@@ -1,0 +1,23 @@
+{"ts":"2026-09-05T14:11:16.7782761\u002B00:00","run_id":"replay-20260905-141115","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":2,"inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T14:11:16.9010552\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s1","action":"type","frame":[],"risk":"safe","note":"Enter operator user id"}}
+{"ts":"2026-09-05T14:11:17.1623359\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T14:11:17.1637497\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s2","action":"type","frame":[],"risk":"safe","note":"Enter ▮▮REDACTED▮▮ password"}}
+{"ts":"2026-09-05T14:11:17.2571953\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T14:11:17.2574942\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s3","action":"click","frame":[],"risk":"safe","note":"Sign On"}}
+{"ts":"2026-09-05T14:11:18.2928959\u002B00:00","run_id":"replay-20260905-141115","kind":"assertion_matched","data":{"step":"s3","class":"success","when":"Css:#ext-gen33"}}
+{"ts":"2026-09-05T14:11:18.3026541\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T14:11:18.3030313\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s4","action":"click","frame":[],"risk":"safe","note":"Acknowledge notice"}}
+{"ts":"2026-09-05T14:11:18.4149991\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T14:11:18.4276049\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s5","action":"click","frame":["navFrm"],"risk":"safe","note":"Expand Account Servicing"}}
+{"ts":"2026-09-05T14:11:18.5772502\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s5"}}
+{"ts":"2026-09-05T14:11:18.5817393\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s6","action":"click","frame":["navFrm"],"risk":"safe","note":"Expand Account Servicing via \u002B toggle"}}
+{"ts":"2026-09-05T14:11:18.6744045\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s6"}}
+{"ts":"2026-09-05T14:11:18.6786948\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s7","action":"click","frame":["navFrm"],"risk":"safe","note":"Open Fee Management"}}
+{"ts":"2026-09-05T14:11:20.1186138\u002B00:00","run_id":"replay-20260905-141115","kind":"wait_ok","data":{"step":"s7","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T14:11:21.7645525\u002B00:00","run_id":"replay-20260905-141115","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#ext-gen42_input"}}
+{"ts":"2026-09-05T14:11:21.7647880\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s7"}}
+{"ts":"2026-09-05T14:11:21.7696526\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s8","action":"type","frame":["wrkFrm","modFrm"],"risk":"safe","note":"Enter account id"}}
+{"ts":"2026-09-05T14:11:21.8361256\u002B00:00","run_id":"replay-20260905-141115","kind":"step_ok","data":{"step":"s8"}}
+{"ts":"2026-09-05T14:11:21.8419307\u002B00:00","run_id":"replay-20260905-141115","kind":"step_started","data":{"step":"s9","action":"click","frame":["wrkFrm","modFrm"],"risk":"safe","note":"Execute Inquiry"}}
+{"ts":"2026-09-05T14:11:25.8293559\u002B00:00","run_id":"replay-20260905-141115","kind":"wait_ok","data":{"step":"s9","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T14:11:25.8370791\u002B00:00","run_id":"replay-20260905-141115","kind":"assertion_matched","data":{"step":"s9","class":"business_outcome","when":"TextContains:No records found for the supplied account identifier.","note":"Observed with account ▮▮REDACTED▮▮ \u2014 inquiry returns no account/fee data; flow stops, no waive possible."}}

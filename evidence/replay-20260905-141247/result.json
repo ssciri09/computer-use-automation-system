@@ -1,0 +1,18 @@
+{
+  "status": "escalation_pending",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 2,
+  "run_id": "replay-20260905-141247",
+  "outputs": {},
+  "intervention": {
+    "reason": "Restricted-party waive triggers a blocking Manager Override PIN modal in the TOP document (#ext-gen95 / #ext-gen99_pin / Authorize #ext-gen101). A human with override authority must clear it; the reversal state is unknown until then.",
+    "at_step_id": "s10",
+    "raised_at": "2026-09-05T14:12:59.2170974+00:00",
+    "resolution": "pending"
+  },
+  "human_assisted": false,
+  "evidence_dir": "evidence\\replay-20260905-141247",
+  "started_at": "2026-09-05T14:12:48.1402132+00:00",
+  "ended_at": "2026-09-05T14:12:59.239355+00:00",
+  "duration_ms": 11099
+}

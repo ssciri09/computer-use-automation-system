@@ -319,3 +319,39 @@ public sealed class ArtifactCompilerTests
         Assert.Equal("discovery-test", artifact.Provenance.DiscoveryRunId);
     }
 }
+
+public sealed class ProbePrefixTests
+{
+    [Fact]
+    public void RecordedFlow_IsContiguousPrefix_UpToFirstProbe()
+    {
+        var config = new DiscoveryConfig
+        {
+            Goal = "g", EntryUrl = "http://x/", CapabilityId = "cap",
+            Parameters = new Dictionary<string, string>(),
+        };
+        List<TraceStep> trace =
+        [
+            new() { Id = "s1", Action = StepAction.Click, ModelLocator = new Locator { By = LocatorKind.Css, Value = "#a" },
+                    Meta = new Cua.Core.Surface.ElementMeta { Id = "a", Tag = "div" } },
+            new() { Id = "s2", Action = StepAction.Type, Probe = true, ModelLocator = new Locator { By = LocatorKind.Css, Value = "#f" },
+                    Meta = new Cua.Core.Surface.ElementMeta { Id = "f", Tag = "input" }, Value = "77777" },
+            // unflagged action AFTER a probe: must be treated as probe fallout, not flow
+            new() { Id = "s3", Action = StepAction.Click, ModelLocator = new Locator { By = LocatorKind.Css, Value = "#a" },
+                    Meta = new Cua.Core.Surface.ElementMeta { Id = "a", Tag = "div" } },
+        ];
+        var artifact = ArtifactCompiler.Compile(new ArtifactCompiler.Input
+        {
+            Config = config, Trace = trace,
+            Declaration = System.Text.Json.JsonSerializer.SerializeToElement(new
+            {
+                display_name = "x",
+                outputs = Array.Empty<object>(),
+                checkpoint = new { frame_path = Array.Empty<string>(), by = "css", value = "#done" },
+                guarded_steps = Array.Empty<object>(),
+            }),
+            AllowedHosts = ["x"], RunId = "r", NextVersion = 1,
+        });
+        Assert.Equal(["s1", "checkpoint"], artifact.Steps.Select(s => s.Id).ToArray());
+    }
+}

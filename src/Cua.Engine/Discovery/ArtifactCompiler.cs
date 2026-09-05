@@ -34,8 +34,13 @@ public static class ArtifactCompiler
         var authSteps = StringSet(decl, "auth_steps");
         var guarded = ParseGuardedSteps(decl);
 
-        // Probe steps grounded the declaration but are not part of the flow.
-        var flow = input.Trace.Where(t => !t.Probe).ToList();
+        // Probe steps ground the declaration but are not part of the flow.
+        // The recorded flow is the contiguous prefix up to the FIRST probe:
+        // probing is only allowed after the flow is complete, and models that
+        // forget the probe flag on some exploratory actions must not leak them
+        // into the artifact (observed in practice: flagged probe typing
+        // followed by unflagged probe clicks).
+        var flow = input.Trace.TakeWhile(t => !t.Probe).ToList();
         var steps = new List<StepDef>();
         for (var i = 0; i < flow.Count; i++)
         {

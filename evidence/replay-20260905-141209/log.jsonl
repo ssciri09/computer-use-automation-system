@@ -1,0 +1,40 @@
+{"ts":"2026-09-05T14:12:10.8577031\u002B00:00","run_id":"replay-20260905-141209","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":2,"inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T14:12:10.9467375\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s1","action":"type","frame":[],"risk":"safe","note":"Enter operator user id"}}
+{"ts":"2026-09-05T14:12:11.1402359\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T14:12:11.1447341\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s2","action":"type","frame":[],"risk":"safe","note":"Enter ▮▮REDACTED▮▮ password"}}
+{"ts":"2026-09-05T14:12:11.2437090\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T14:12:11.2439477\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s3","action":"click","frame":[],"risk":"safe","note":"Sign On"}}
+{"ts":"2026-09-05T14:12:12.2763313\u002B00:00","run_id":"replay-20260905-141209","kind":"assertion_matched","data":{"step":"s3","class":"success","when":"Css:#ext-gen33"}}
+{"ts":"2026-09-05T14:12:12.2834661\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T14:12:12.2837359\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s4","action":"click","frame":[],"risk":"safe","note":"Acknowledge notice"}}
+{"ts":"2026-09-05T14:12:12.3801655\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T14:12:12.3939073\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s5","action":"click","frame":["navFrm"],"risk":"safe","note":"Expand Account Servicing"}}
+{"ts":"2026-09-05T14:12:12.5168596\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s5"}}
+{"ts":"2026-09-05T14:12:12.5235576\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s6","action":"click","frame":["navFrm"],"risk":"safe","note":"Expand Account Servicing via \u002B toggle"}}
+{"ts":"2026-09-05T14:12:12.5981488\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s6"}}
+{"ts":"2026-09-05T14:12:12.6028431\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s7","action":"click","frame":["navFrm"],"risk":"safe","note":"Open Fee Management"}}
+{"ts":"2026-09-05T14:12:14.0344095\u002B00:00","run_id":"replay-20260905-141209","kind":"wait_ok","data":{"step":"s7","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T14:12:15.6801553\u002B00:00","run_id":"replay-20260905-141209","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#ext-gen42_input"}}
+{"ts":"2026-09-05T14:12:15.6804278\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s7"}}
+{"ts":"2026-09-05T14:12:15.6860063\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s8","action":"type","frame":["wrkFrm","modFrm"],"risk":"safe","note":"Enter account id"}}
+{"ts":"2026-09-05T14:12:15.7610012\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s8"}}
+{"ts":"2026-09-05T14:12:15.7646718\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s9","action":"click","frame":["wrkFrm","modFrm"],"risk":"safe","note":"Execute Inquiry"}}
+{"ts":"2026-09-05T14:12:22.3068029\u002B00:00","run_id":"replay-20260905-141209","kind":"wait_ok","data":{"step":"s9","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T14:12:22.3112983\u002B00:00","run_id":"replay-20260905-141209","kind":"assertion_matched","data":{"step":"s9","class":"recoverable","when":"TextContains:HOST-0521: Legacy host link congested. Resubmit inquiry.","note":"Observed with account ▮▮REDACTED▮▮: banner appeared on the first two Execute Inquiry attempts, succeeded on the third. Re-click #ext-gen44 in wrkFrm\u003EmodFrm."}}
+{"ts":"2026-09-05T14:12:22.3137453\u002B00:00","run_id":"replay-20260905-141209","kind":"retry","data":{"step":"s9","attempt":1,"backoff_ms":2000}}
+{"ts":"2026-09-05T14:12:30.9241930\u002B00:00","run_id":"replay-20260905-141209","kind":"wait_ok","data":{"step":"s9","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T14:12:30.9290058\u002B00:00","run_id":"replay-20260905-141209","kind":"assertion_matched","data":{"step":"s9","class":"recoverable","when":"TextContains:HOST-0521: Legacy host link congested. Resubmit inquiry.","note":"Observed with account ▮▮REDACTED▮▮: banner appeared on the first two Execute Inquiry attempts, succeeded on the third. Re-click #ext-gen44 in wrkFrm\u003EmodFrm."}}
+{"ts":"2026-09-05T14:12:30.9293518\u002B00:00","run_id":"replay-20260905-141209","kind":"retry","data":{"step":"s9","attempt":2,"backoff_ms":5000}}
+{"ts":"2026-09-05T14:12:39.8350472\u002B00:00","run_id":"replay-20260905-141209","kind":"wait_ok","data":{"step":"s9","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T14:12:39.8481203\u002B00:00","run_id":"replay-20260905-141209","kind":"assertion_matched","data":{"step":"s9","class":"success","when":"Css:#ext-gen77"}}
+{"ts":"2026-09-05T14:12:39.8482800\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s9"}}
+{"ts":"2026-09-05T14:12:39.8546791\u002B00:00","run_id":"replay-20260905-141209","kind":"risk_flagged","data":{"step":"s10","note":"irreversible step executed under approved artifact \u002B --ack-risk"}}
+{"ts":"2026-09-05T14:12:39.8557864\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s10","action":"click","frame":["wrkFrm","modFrm"],"risk":"irreversible","note":"Waive Fee for FEE-88213"}}
+{"ts":"2026-09-05T14:12:42.2097237\u002B00:00","run_id":"replay-20260905-141209","kind":"wait_ok","data":{"step":"s10","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T14:12:42.2598946\u002B00:00","run_id":"replay-20260905-141209","kind":"assertion_matched","data":{"step":"s10","class":"success","when":"TextContains:reversed. Credit of"}}
+{"ts":"2026-09-05T14:12:42.2601317\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s10"}}
+{"ts":"2026-09-05T14:12:42.2859978\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"s11","action":"read","frame":["wrkFrm","modFrm"],"risk":"safe"}}
+{"ts":"2026-09-05T14:12:42.3614543\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"s11"}}
+{"ts":"2026-09-05T14:12:42.3643874\u002B00:00","run_id":"replay-20260905-141209","kind":"step_started","data":{"step":"checkpoint","action":"checkpoint","frame":["wrkFrm","modFrm"],"risk":"safe","note":"verifies the goal state and extracts declared outputs"}}
+{"ts":"2026-09-05T14:12:42.3688834\u002B00:00","run_id":"replay-20260905-141209","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:reversed. Credit of"}}
+{"ts":"2026-09-05T14:12:42.3748142\u002B00:00","run_id":"replay-20260905-141209","kind":"step_ok","data":{"step":"checkpoint"}}
