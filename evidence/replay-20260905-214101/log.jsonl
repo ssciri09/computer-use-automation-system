@@ -1,0 +1,9 @@
+{"ts":"2026-09-05T21:41:01.7549017\u002B00:00","run_id":"replay-20260905-214101","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":1,"surface_kind":"desktop","inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T21:41:02.4335841\u002B00:00","run_id":"replay-20260905-214101","kind":"step_started","data":{"step":"s1","action":"type","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:41:02.5193875\u002B00:00","run_id":"replay-20260905-214101","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T21:41:02.5219299\u002B00:00","run_id":"replay-20260905-214101","kind":"step_started","data":{"step":"s2","action":"type","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:41:02.5808006\u002B00:00","run_id":"replay-20260905-214101","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T21:41:02.5809781\u002B00:00","run_id":"replay-20260905-214101","kind":"step_started","data":{"step":"s3","action":"click","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:41:17.8723586\u002B00:00","run_id":"replay-20260905-214101","kind":"wait_timeout","data":{"step":"s3","value":"#btnAcknowledge","state":"visible"}}
+{"ts":"2026-09-05T21:41:17.9105612\u002B00:00","run_id":"replay-20260905-214101","kind":"screenshot","data":{"label":"failure-s3","path":"01-failure-s3.png"}}
+{"ts":"2026-09-05T21:41:17.9496842\u002B00:00","run_id":"replay-20260905-214101","kind":"hard_failure","data":{"step_id":"s3","expected":"Visible state for #btnAcknowledge","observed":"wait condition never satisfied \u2014 on-screen: [LogonPane] Operator Sign On ;; [LogonPane] User ID: ;; [LogonPane] Password: ▮▮REDACTED▮▮ [LogonPane] Test credentials: ▮▮REDACTED▮▮ / ▮▮REDACTED▮▮","screenshot_path":"evidence\\replay-20260905-214101\\01-failure-s3.png"}}

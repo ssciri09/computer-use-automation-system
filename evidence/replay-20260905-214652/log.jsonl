@@ -1,0 +1,30 @@
+{"ts":"2026-09-05T21:46:52.9625235\u002B00:00","run_id":"replay-20260905-214652","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":1,"surface_kind":"desktop","inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T21:46:53.3009191\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s1","action":"type","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:46:53.3582866\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T21:46:53.3600267\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s2","action":"type","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:46:53.4065513\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T21:46:53.4066819\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s3","action":"click","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:46:53.5833053\u002B00:00","run_id":"replay-20260905-214652","kind":"wait_ok","data":{"step":"s3","value":"#btnAcknowledge","state":"visible"}}
+{"ts":"2026-09-05T21:46:53.5875928\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T21:46:53.5876889\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s4","action":"click","frame":["DisclaimerPane"],"risk":"safe","note":"mandatory disclaimer gates the workspace"}}
+{"ts":"2026-09-05T21:46:53.7651423\u002B00:00","run_id":"replay-20260905-214652","kind":"wait_ok","data":{"step":"s4","value":"#btnFeeManagement","state":"visible"}}
+{"ts":"2026-09-05T21:46:53.7654423\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T21:46:53.8801015\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s5","action":"click","frame":["NavigationPane"],"risk":"safe","note":"the module pane is built ~1.2s after this click \u2014 the desktop analogue of a late-injected iframe"}}
+{"ts":"2026-09-05T21:46:55.2679102\u002B00:00","run_id":"replay-20260905-214652","kind":"wait_ok","data":{"step":"s5","value":"#txtAccountId","state":"visible"}}
+{"ts":"2026-09-05T21:46:55.2683048\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s5"}}
+{"ts":"2026-09-05T21:46:55.3664741\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s6","action":"type","frame":["WorkspacePane","FeeModulePane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:46:55.4370424\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s6"}}
+{"ts":"2026-09-05T21:46:55.5761666\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s7","action":"click","frame":["WorkspacePane","FeeModulePane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:46:58.3228100\u002B00:00","run_id":"replay-20260905-214652","kind":"wait_ok","data":{"step":"s7","value":"#lblHostBusyIndicator","state":"absent"}}
+{"ts":"2026-09-05T21:46:58.5621885\u002B00:00","run_id":"replay-20260905-214652","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#btnWaiveFee"}}
+{"ts":"2026-09-05T21:46:58.5700961\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s7"}}
+{"ts":"2026-09-05T21:46:58.6986819\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s8","action":"read","frame":["WorkspacePane","FeeModulePane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:46:58.7419606\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s8"}}
+{"ts":"2026-09-05T21:46:58.8737976\u002B00:00","run_id":"replay-20260905-214652","kind":"risk_flagged","data":{"step":"s9","note":"irreversible step executed under approved artifact \u002B --ack-risk"}}
+{"ts":"2026-09-05T21:46:58.8756836\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"s9","action":"click","frame":["WorkspacePane","FeeModulePane"],"risk":"irreversible","note":"posts the reversal to the host \u2014 cannot be undone"}}
+{"ts":"2026-09-05T21:47:00.9464875\u002B00:00","run_id":"replay-20260905-214652","kind":"wait_ok","data":{"step":"s9","value":"#lblHostBusyIndicator","state":"absent"}}
+{"ts":"2026-09-05T21:47:01.1101889\u002B00:00","run_id":"replay-20260905-214652","kind":"assertion_matched","data":{"step":"s9","class":"success","when":"TextContains:reversed"}}
+{"ts":"2026-09-05T21:47:01.1103471\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"s9"}}
+{"ts":"2026-09-05T21:47:01.1951341\u002B00:00","run_id":"replay-20260905-214652","kind":"step_started","data":{"step":"checkpoint","action":"checkpoint","frame":["WorkspacePane","FeeModulePane"],"risk":"safe","note":"verifies the reversal actually posted and extracts the confirmation"}}
+{"ts":"2026-09-05T21:47:01.2273203\u002B00:00","run_id":"replay-20260905-214652","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:Confirmation RVSL-"}}
+{"ts":"2026-09-05T21:47:01.2589271\u002B00:00","run_id":"replay-20260905-214652","kind":"step_ok","data":{"step":"checkpoint"}}

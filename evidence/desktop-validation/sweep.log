@@ -1,0 +1,50 @@
+########## HAPPY PATH (account 12345) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:46:58.5621885\u002B00:00","run_id":"replay-20260905-214652","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#btnWaiveFee"}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:01.1101889\u002B00:00","run_id":"replay-20260905-214652","kind":"assertion_matched","data":{"step":"s9","class":"success","when":"TextContains:reversed"}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:01.2273203\u002B00:00","run_id":"replay-20260905-214652","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:Confirmation RVSL-"}}
+  "status": "success",
+    "outcome": "waived",
+    "confirmation_number": "RVSL-4D283E90"
+  "outcome": "waived",
+OK  success
+
+########## CLOSED ACCOUNT (account 99999) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:47:09.2507832\u002B00:00","run_id":"replay-20260905-214703","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#btnWaiveFee"}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:11.7548568\u002B00:00","run_id":"replay-20260905-214703","kind":"assertion_matched","data":{"step":"s9","class":"business_outcome","when":"TextContains:Account is closed"}}
+  "status": "business_outcome",
+    "outcome": "not_permitted"
+  "outcome": "not_permitted",
+OUTCOME  business outcome: not_permitted
+
+########## UNKNOWN ACCOUNT (account 77777) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:47:19.6864203\u002B00:00","run_id":"replay-20260905-214713","kind":"assertion_matched","data":{"step":"s7","class":"business_outcome","when":"TextContains:No records found"}}
+  "status": "business_outcome",
+    "outcome": "not_found"
+  "outcome": "not_found",
+OUTCOME  business outcome: not_found
+
+########## TRANSIENT RETRY (account 55555) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:47:27.4157693\u002B00:00","run_id":"replay-20260905-214721","kind":"assertion_matched","data":{"step":"s7","class":"recoverable","when":"TextContains:HOST-0521","note":"legacy host link congestion \u.
+  [retry] {"ts":"2026-09-05T21:47:27.4254133\u002B00:00","run_id":"replay-20260905-214721","kind":"retry","data":{"step":"s7","attempt":1,"backoff_ms":2000}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:32.9004644\u002B00:00","run_id":"replay-20260905-214721","kind":"assertion_matched","data":{"step":"s7","class":"recoverable","when":"TextContains:HOST-0521","note":"legacy host link congestion \u.
+  [retry] {"ts":"2026-09-05T21:47:32.9017094\u002B00:00","run_id":"replay-20260905-214721","kind":"retry","data":{"step":"s7","attempt":2,"backoff_ms":4000}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:40.1822152\u002B00:00","run_id":"replay-20260905-214721","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#btnWaiveFee"}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:42.8469385\u002B00:00","run_id":"replay-20260905-214721","kind":"assertion_matched","data":{"step":"s9","class":"success","when":"TextContains:reversed"}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:42.9445951\u002B00:00","run_id":"replay-20260905-214721","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:Confirmation RVSL-"}}
+  "status": "success",
+    "outcome": "waived",
+    "confirmation_number": "RVSL-F01F7645"
+  "outcome": "waived",
+OK  success
+
+########## SECURITY ESCALATION (account 00000) ##########
+  [assertion_matched] {"ts":"2026-09-05T21:47:51.2404951\u002B00:00","run_id":"replay-20260905-214745","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#btnWaiveFee"}}
+  [assertion_matched] {"ts":"2026-09-05T21:47:53.6404526\u002B00:00","run_id":"replay-20260905-214745","kind":"assertion_matched","data":{"step":"s9","class":"escalate","when":"Css:#txtOverridePin","note":"the overlay is painted on the ROOT w.
+  [intervention_raised] {"ts":"2026-09-05T21:47:53.7815808\u002B00:00","run_id":"replay-20260905-214745","kind":"intervention_raised","data":{"step":"s9","reason":"security interception: manager override PIN required"}}
+  "status": "escalation_pending",
+    "reason": "security interception: manager override PIN required",
+    "resolution": "pending"
+PENDING  escalation pending - session context preserved for the operator
+
+
+[exited with code 0]

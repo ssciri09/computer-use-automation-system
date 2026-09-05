@@ -1,0 +1,10 @@
+URL: app://FirstCore.Desktop
+== frame LogonPane "LogonPane"
+  msg [lblHeader_Operator] Operator Sign On
+  msg [lblUserId] User ID:
+  msg [lblPassword] Password:
+  ▮▮REDACTED▮▮ [lblHint] Test credentials: ▮▮REDACTED▮▮ / ▮▮REDACTED▮▮
+  field <edit> id=txtUserId name=User ID value="▮▮REDACTED▮▮"
+  field <edit> id=txtPassword name=Password value="Access denied"
+  control <button> id=btnSignOn text="Sign On"
+== frame (top) "FirstCore Banking Platform"

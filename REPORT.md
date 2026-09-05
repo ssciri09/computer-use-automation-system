@@ -132,9 +132,21 @@ Name, coordinates stay scope-relative; xpath is dropped by design. The
 artifact's `surface.kind` selects the adapter at composition time; the engine,
 compiler, and schema never branch on it. Coordinates-as-last-resort exists in
 the chain because it is the one rank that survives bitmap-only surfaces.
-(Honest status: the desktop adapter is built and unit-mapped but not yet
-exercised against a real desktop app; it records no human actions during
-takeover yet.)
+
+This is validated, not asserted: `mock-legacy-desktop/` is a WinForms build of
+the same fee-waiver workflow with the same obstacles rendered natively — a
+module pane that does not exist until ~1.2s after the nav click, a busy
+indicator removed from the tree rather than hidden, and a security overlay
+painted on the **root window, outside the module pane**. The same replay
+engine drives it through all five outcome classes (see
+`evidence/desktop-*`): success with an extracted `RVSL-…` confirmation,
+`not_permitted`, `not_found`, transient congestion retried twice then
+succeeding, and escalation raised because the assertion names the root frame.
+Running it was worth more than reasoning about it — it exposed three real
+defects (unresolved relative entry paths, a risk-confirmation that left its
+intervention record `pending` on a successful run, and a leaked app process
+whose stale window silently swallowed clicks). Still cut: human-action
+recording during a desktop takeover is a no-op (§7).
 
 **Multi-tenant reuse.** The unit of reuse is the vendor-product artifact, not
 the tenant recording. The artifact carries `vendor` (product + version range)
@@ -227,9 +239,10 @@ Deliberate, with the seams left clean:
 
 - **Operator console UI** — terminal + queue only; `IOperatorChannel` is the
   seam. Next: a web console consuming the queue, screen-sharing the session.
-- **Desktop, end to end** — the UIA3 adapter is built but unproven against a
-  real application; takeover action-recording on desktop is a no-op. Next:
-  one artifact replayed across web + desktop builds of the same flow.
+- **Desktop takeover recording** — the UIA3 adapter is proven end to end
+  against a native app (§4), but it buffers no human actions during a
+  takeover; the web surface does. Next: UIA event handlers for the
+  focus/invoke/value-change patterns, written to the same evidence stream.
 - **Tenant override resolver** — schema carries the block; the base+overlay
   merge and per-tenant catalog are not implemented.
 - **LLM-assisted recovery on replay failure** — bounded, policy-checked

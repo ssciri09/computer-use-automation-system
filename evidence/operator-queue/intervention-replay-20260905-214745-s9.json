@@ -1,0 +1,12 @@
+{
+  "run_id": "replay-20260905-214745",
+  "capability_id": "firstcore.fee_waiver",
+  "goal": "In Fee Management, look up the account and waive the assessed overdraft fee, reaching the reversal confirmation.",
+  "step_id": "s9",
+  "reason": "security interception: manager override PIN required",
+  "detail": "posts the reversal to the host \u2014 cannot be undone",
+  "screenshot_path": "evidence\\replay-20260905-214745\\01-escalation-s9.png",
+  "observation_digest": "URL: app://FirstCore.Desktop\r\n== frame SecurityOverlayPane \u0022SecurityOverlayPane\u0022\r\n  msg [lblHeader_SECURITY] SECURITY INTERCEPTION: Manager Override PIN Required\r\n  msg [lblSecurityNotice] Account \u25AE\u25AEREDACTED\u25AE\u25AE carries a supervisory restriction. A manager\noverride PIN is required to continue this transaction.\r\n  msg [lblPinPrompt] Override PIN:\r\n  field \u003Cedit\u003E id=txtOverridePin name=Override PIN value=\u0022Access denied\u0022\r\n  control \u003Cbutton\u003E id=btnAuthorize text=\u0022Authorize\u0022\r\n== frame NavigationPane \u0022NavigationPane\u0022\r\n  msg [lblHeader_Application] Application Menu\r\n  control \u003Cbutton\u003E id=btnBalanceInquiry text=\u0022Balance Inquiry\u0022\r\n  control \u003Cbutton\u003E id=btnTransactionHistory text=\u0022Transaction History\u0022\r\n  control \u003Cbutton\u003E id=btnFeeManagement text=\u0022Fee Management\u0022\r\n  control \u003Cbutton\u003E id=btnAddressMaintenance text=\u0022Address Maintenance\u0022\r\n== frame WorkspacePane\u003EFeeModulePane \u0022FeeModulePane\u0022\r\n  msg [lblHeader_Fee] Fee Management \u2014 Account Inquiry\r\n  msg [lblAcctPrompt] Account Identifier:\r\n  msg [lblAccountDetail] ACCT \u25AE\u25AEREDACTED\u25AE\u25AE   NAME RESTRICTED PARTY   BR 001   PRODUCT REG CHECKING   STATUS ACTIVE   LEDGER BAL 9,430.11\r\n  msg [lblFeeRow] FEE REF FEE-\u25AE\u25AEREDACTED\u25AE\u25AE   OVERDRAFT ITEM FEE   POSTED 08/26/2026   AMT 35.00\r\n  field \u003Cedit\u003E id=txtAccountId name=Account Identifier value=\u0022\u25AE\u25AEREDACTED\u25AE\u25AE\u0022\r\n  control \u003Cbutton\u003E id=btnExecuteInquiry text=\u0022Execute Inquiry\u0022\r\n  control \u003Cbutton\u003E id=btnWaiveFee text=\u0022Waive Fee\u0022\r\n== frame WorkspacePane \u0022WorkspacePane\u0022\r\n  msg [lblHeader_Workspace] Workspace\r\n  msg [lblNoModule] Select a function from the application menu.\r\n== frame (top) \u0022FirstCore Banking Platform\u0022\r\n",
+  "resume_plan": "on handback the run resumes at step checkpoint",
+  "raised_at": "2026-09-05T21:47:53.7737995+00:00"
+}

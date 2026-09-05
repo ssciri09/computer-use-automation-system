@@ -55,7 +55,15 @@ public sealed class DesktopSurface : ISurface
                 ?? throw new InvalidOperationException($"no window named '{title}' to attach");
         }
 
+        // Native input goes to the foreground window: an unfocused target
+        // silently swallows clicks and every wait then times out.
+        TryFocus();
         return Task.CompletedTask;
+    }
+
+    private void TryFocus()
+    {
+        try { _root?.AsWindow()?.Focus(); } catch { /* focus is best-effort */ }
     }
 
     public Task<string> CurrentUrlAsync() => Task.FromResult($"app://{_identity}");
@@ -188,6 +196,8 @@ public sealed class DesktopSurface : ISurface
 
     public ValueTask DisposeAsync()
     {
+        // Close what we launched; a leaked window steals focus from the next run.
+        try { _app?.Close(); } catch { /* already gone */ }
         _automation.Dispose();
         _app?.Dispose();
         return ValueTask.CompletedTask;

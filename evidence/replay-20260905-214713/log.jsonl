@@ -1,0 +1,19 @@
+{"ts":"2026-09-05T21:47:13.9902660\u002B00:00","run_id":"replay-20260905-214713","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":1,"surface_kind":"desktop","inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T21:47:14.3702382\u002B00:00","run_id":"replay-20260905-214713","kind":"step_started","data":{"step":"s1","action":"type","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:47:14.4425122\u002B00:00","run_id":"replay-20260905-214713","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T21:47:14.4441756\u002B00:00","run_id":"replay-20260905-214713","kind":"step_started","data":{"step":"s2","action":"type","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:47:14.5081040\u002B00:00","run_id":"replay-20260905-214713","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T21:47:14.5082674\u002B00:00","run_id":"replay-20260905-214713","kind":"step_started","data":{"step":"s3","action":"click","frame":["LogonPane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:47:14.6858677\u002B00:00","run_id":"replay-20260905-214713","kind":"wait_ok","data":{"step":"s3","value":"#btnAcknowledge","state":"visible"}}
+{"ts":"2026-09-05T21:47:14.6891704\u002B00:00","run_id":"replay-20260905-214713","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T21:47:14.6892271\u002B00:00","run_id":"replay-20260905-214713","kind":"step_started","data":{"step":"s4","action":"click","frame":["DisclaimerPane"],"risk":"safe","note":"mandatory disclaimer gates the workspace"}}
+{"ts":"2026-09-05T21:47:14.8390303\u002B00:00","run_id":"replay-20260905-214713","kind":"wait_ok","data":{"step":"s4","value":"#btnFeeManagement","state":"visible"}}
+{"ts":"2026-09-05T21:47:14.8391805\u002B00:00","run_id":"replay-20260905-214713","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T21:47:14.9260381\u002B00:00","run_id":"replay-20260905-214713","kind":"step_started","data":{"step":"s5","action":"click","frame":["NavigationPane"],"risk":"safe","note":"the module pane is built ~1.2s after this click \u2014 the desktop analogue of a late-injected iframe"}}
+{"ts":"2026-09-05T21:47:16.3237893\u002B00:00","run_id":"replay-20260905-214713","kind":"wait_ok","data":{"step":"s5","value":"#txtAccountId","state":"visible"}}
+{"ts":"2026-09-05T21:47:16.3240512\u002B00:00","run_id":"replay-20260905-214713","kind":"step_ok","data":{"step":"s5"}}
+{"ts":"2026-09-05T21:47:16.4602959\u002B00:00","run_id":"replay-20260905-214713","kind":"step_started","data":{"step":"s6","action":"type","frame":["WorkspacePane","FeeModulePane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:47:16.5465583\u002B00:00","run_id":"replay-20260905-214713","kind":"step_ok","data":{"step":"s6"}}
+{"ts":"2026-09-05T21:47:16.7309003\u002B00:00","run_id":"replay-20260905-214713","kind":"step_started","data":{"step":"s7","action":"click","frame":["WorkspacePane","FeeModulePane"],"risk":"safe"}}
+{"ts":"2026-09-05T21:47:19.5587167\u002B00:00","run_id":"replay-20260905-214713","kind":"wait_ok","data":{"step":"s7","value":"#lblHostBusyIndicator","state":"absent"}}
+{"ts":"2026-09-05T21:47:19.6864203\u002B00:00","run_id":"replay-20260905-214713","kind":"assertion_matched","data":{"step":"s7","class":"business_outcome","when":"TextContains:No records found"}}

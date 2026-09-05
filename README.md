@@ -26,6 +26,7 @@ and replay logs are in [evidence/](evidence/).
 | `src/Cua.Engine` | Discovery agent (Anthropic API loop + artifact compiler) and the deterministic replay engine. |
 | `src/Cua.Cli` | `cua` command line. |
 | `tests/Cua.Tests` | Unit tests for the load-bearing logic (outcome taxonomy, retries, escalation/resume, guards, policy, redaction, compiler). |
+| `mock-legacy-desktop/` | The desktop target: a WinForms thick-client build of the same fee-waiver workflow (late-built module pane, busy indicator removed from the UIA tree, security overlay on the root window outside the module pane). Proves one replay engine drives two surfaces. |
 | `mock-legacy-bank/` | The target: a deliberately hostile mock "FirstCore Banking Platform" (framesets, nested late-injected iframes, `ext-genNN` ids, `<span onclick>` controls, multi-second host latency, security modal that escapes the module frame). Python 3.8+, no dependencies. |
 | `capabilities/` | The capability catalog (recorded artifacts). |
 | `evidence/` | Run evidence: JSONL logs, screenshots, model transcript, results. |
@@ -121,7 +122,19 @@ dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee
   --input account_id=00000 --ack-risk --operator queue
 ```
 
-**5. The catalog an AI agent would call:**
+**5. The same capability on a second surface (desktop):**
+
+```bash
+dotnet build mock-legacy-desktop/FirstCore.Desktop.csproj
+
+# same engine, same artifact vocabulary, native UIA adapter - no browser
+dotnet run --project src/Cua.Cli -- replay   --artifact capabilities/firstcore.fee_waiver.firstcore-desktop.v1.json   --input account_id=12345 --ack-risk          # success + RVSL- confirmation
+#  --input account_id=99999                    # business outcome: not_permitted
+#  --input account_id=55555                    # transient -> retry -> success
+#  --input account_id=00000 --operator queue   # escalation_pending
+```
+
+**6. The catalog an AI agent would call:**
 
 ```bash
 dotnet run --project src/Cua.Cli -- list

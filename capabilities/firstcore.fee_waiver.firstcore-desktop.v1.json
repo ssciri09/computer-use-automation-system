@@ -1,0 +1,469 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 1,
+  "display_name": "Waive an assessed overdraft fee (thick client)",
+  "description": "Desktop sibling of the web fee-waiver capability: same contract (account_id in, outcome \u002B confirmation out), same outcome taxonomy, different surface.",
+  "goal": "In Fee Management, look up the account and waive the assessed overdraft fee, reaching the reversal confirmation.",
+  "vendor": {
+    "product": "FirstCore Banking Platform",
+    "version_range": "\u003E=4.2,\u003C5.0"
+  },
+  "tenant": {
+    "recorded_for": "tenant_default",
+    "overrides": {}
+  },
+  "surface": {
+    "kind": "desktop",
+    "entry_url": "mock-legacy-desktop/bin/Debug/net9.0-windows/FirstCore.Desktop.exe",
+    "allowlist": [
+      "FirstCore.Desktop"
+    ],
+    "app_binding": "firstcore-desktop"
+  },
+  "inputs": [
+    {
+      "name": "account_id",
+      "type": "string",
+      "required": true,
+      "pattern": "^[0-9]{3,12}$",
+      "sensitivity": "pii",
+      "redact_in_logs": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "outcome",
+      "type": "enum",
+      "enum_values": [
+        "waived",
+        "not_permitted",
+        "not_found"
+      ],
+      "required": false
+    },
+    {
+      "name": "confirmation_number",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "fee_ref",
+      "type": "string",
+      "required": false
+    }
+  ],
+  "credentials": {
+    "ref": "env://CUA"
+  },
+  "guards": [
+    {
+      "id": "session-expired",
+      "when": {
+        "by": "css",
+        "value": "#txtUserId",
+        "frame": [
+          "LogonPane"
+        ]
+      },
+      "response": "recover_auth",
+      "note": "the sign-on pane reappeared mid-run: re-run the auth phase once, then resume"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "action": "type",
+      "phase": "auth",
+      "frame": [
+        "LogonPane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#txtUserId"
+          },
+          {
+            "by": "text",
+            "value": "User ID"
+          }
+        ],
+        "robustness": "AutomationId first; UIA Name is the fallback because control names survive layout changes"
+      },
+      "value_ref": "credentials.username",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s2",
+      "action": "type",
+      "phase": "auth",
+      "frame": [
+        "LogonPane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#txtPassword"
+          },
+          {
+            "by": "text",
+            "value": "Password"
+          }
+        ]
+      },
+      "value_ref": "credentials.password",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s3",
+      "action": "click",
+      "phase": "auth",
+      "frame": [
+        "LogonPane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#btnSignOn"
+          },
+          {
+            "by": "text",
+            "value": "Sign On"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#btnAcknowledge"
+        },
+        "frame": [
+          "DisclaimerPane"
+        ],
+        "state": "visible",
+        "timeout_ms": 15000
+      },
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s4",
+      "action": "click",
+      "phase": "auth",
+      "frame": [
+        "DisclaimerPane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#btnAcknowledge"
+          },
+          {
+            "by": "text",
+            "value": "I Acknowledge"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#btnFeeManagement"
+        },
+        "frame": [
+          "NavigationPane"
+        ],
+        "state": "visible",
+        "timeout_ms": 15000
+      },
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000,
+      "note": "mandatory disclaimer gates the workspace"
+    },
+    {
+      "id": "s5",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "NavigationPane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#btnFeeManagement"
+          },
+          {
+            "by": "text",
+            "value": "Fee Management"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#txtAccountId"
+        },
+        "frame": [
+          "WorkspacePane",
+          "FeeModulePane"
+        ],
+        "state": "visible",
+        "timeout_ms": 30000
+      },
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 30000,
+      "note": "the module pane is built ~1.2s after this click \u2014 the desktop analogue of a late-injected iframe"
+    },
+    {
+      "id": "s6",
+      "action": "type",
+      "phase": "main",
+      "frame": [
+        "WorkspacePane",
+        "FeeModulePane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#txtAccountId"
+          },
+          {
+            "by": "text",
+            "value": "Account Identifier"
+          }
+        ]
+      },
+      "value_ref": "inputs.account_id",
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s7",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "WorkspacePane",
+        "FeeModulePane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#btnExecuteInquiry"
+          },
+          {
+            "by": "text",
+            "value": "Execute Inquiry"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#lblHostBusyIndicator"
+        },
+        "state": "absent",
+        "timeout_ms": 45000
+      },
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "recoverable",
+          "when": {
+            "by": "text_contains",
+            "value": "HOST-0521"
+          },
+          "terminal": false,
+          "retry": {
+            "max_attempts": 4,
+            "backoff_ms": [
+              2000,
+              4000,
+              8000
+            ]
+          },
+          "note": "legacy host link congestion \u2014 observed on account 55555"
+        },
+        {
+          "classify": "business_outcome",
+          "when": {
+            "by": "text_contains",
+            "value": "No records found"
+          },
+          "emit": {
+            "outcome": "not_found"
+          },
+          "terminal": true
+        },
+        {
+          "classify": "success",
+          "when": {
+            "by": "css",
+            "value": "#btnWaiveFee"
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 45000
+    },
+    {
+      "id": "s8",
+      "action": "read",
+      "phase": "main",
+      "frame": [
+        "WorkspacePane",
+        "FeeModulePane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#lblFeeRow"
+          }
+        ]
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "read_into": "fee_ref",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
+      "id": "s9",
+      "action": "click",
+      "phase": "main",
+      "frame": [
+        "WorkspacePane",
+        "FeeModulePane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#btnWaiveFee"
+          },
+          {
+            "by": "text",
+            "value": "Waive Fee"
+          }
+        ]
+      },
+      "clear_first": true,
+      "wait_after": {
+        "locator": {
+          "by": "css",
+          "value": "#lblHostBusyIndicator"
+        },
+        "state": "absent",
+        "timeout_ms": 45000
+      },
+      "risk": "irreversible",
+      "assertions": [
+        {
+          "classify": "business_outcome",
+          "when": {
+            "by": "text_contains",
+            "value": "Account is closed"
+          },
+          "emit": {
+            "outcome": "not_permitted"
+          },
+          "terminal": true
+        },
+        {
+          "classify": "escalate",
+          "when": {
+            "by": "css",
+            "value": "#txtOverridePin",
+            "frame": []
+          },
+          "terminal": false,
+          "escalate": {
+            "reason": "security interception: manager override PIN required",
+            "resume_at": "checkpoint"
+          },
+          "note": "the overlay is painted on the ROOT window, outside the module pane \u2014 the assertion names the root frame deliberately"
+        },
+        {
+          "classify": "success",
+          "when": {
+            "by": "text_contains",
+            "value": "reversed"
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [],
+      "timeout_ms": 45000,
+      "note": "posts the reversal to the host \u2014 cannot be undone"
+    },
+    {
+      "id": "checkpoint",
+      "action": "checkpoint",
+      "phase": "main",
+      "frame": [
+        "WorkspacePane",
+        "FeeModulePane"
+      ],
+      "clear_first": true,
+      "risk": "safe",
+      "assertions": [
+        {
+          "classify": "success",
+          "when": {
+            "by": "text_contains",
+            "value": "Confirmation RVSL-"
+          },
+          "emit": {
+            "outcome": "waived"
+          },
+          "terminal": false
+        }
+      ],
+      "extracts": [
+        {
+          "name": "confirmation_number",
+          "regex": "RVSL-[A-F0-9]{8}"
+        }
+      ],
+      "timeout_ms": 30000,
+      "note": "verifies the reversal actually posted and extracts the confirmation"
+    }
+  ],
+  "redaction": {
+    "log_patterns": [
+      "RVSL-[A-F0-9]{8}"
+    ]
+  },
+  "provenance": {
+    "approval": "approved"
+  }
+}

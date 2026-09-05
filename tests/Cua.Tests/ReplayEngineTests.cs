@@ -372,6 +372,10 @@ public sealed class ReplayEngineTests : IDisposable
             Assert.Equal(RunStatus.Success, result.Status);
             Assert.Single(channel.Requests);
             Assert.Contains("irreversible", channel.Requests[0].Reason);
+            // an authorized confirmation must not leave a "pending" record behind
+            Assert.Equal("resolved", result.Intervention!.Resolution);
+            Assert.NotNull(result.Intervention.ResolvedAt);
+            Assert.True(result.HumanAssisted);
         }
     }
 

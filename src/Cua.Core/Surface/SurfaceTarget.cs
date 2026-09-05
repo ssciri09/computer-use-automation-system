@@ -60,6 +60,15 @@ public sealed record SurfaceTarget
             args = exe[(split + 5)..].Trim();
             exe = exe[..(split + 4)];
         }
+
+        // Artifacts carry repo-relative entry paths so they stay portable;
+        // process launch needs an absolute one.
+        if (!Path.IsPathRooted(exe))
+        {
+            var resolved = Path.GetFullPath(exe);
+            if (File.Exists(resolved)) exe = resolved;
+        }
+
         return new SurfaceTarget
         {
             Identity = Path.GetFileNameWithoutExtension(exe),

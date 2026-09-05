@@ -382,6 +382,17 @@ public sealed class ReplayEngine(
                         ? "queued for operator; run parked as escalation_pending"
                         : "operator declined",
                 }));
+
+        // The operator authorized the step: close out the record, or the run
+        // reports success while still carrying a "pending" intervention.
+        _humanAssisted = true;
+        _intervention = _intervention! with
+        {
+            ResolvedAt = DateTimeOffset.UtcNow,
+            Resolution = "resolved",
+            OperatorNotes = resolution.OperatorNotes ?? "authorized the irreversible step",
+        };
+        log.Log("risk_authorized", new { step = step.Id, notes = _intervention.OperatorNotes });
     }
 
     private async Task<string?> EscalateAsync(StepDef step, AssertionDef assertion, CancellationToken ct)
