@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cua.Core\Cua.Core.csproj" />
+    <ProjectReference Include="..\Cua.Web\Cua.Web.csproj" />
+    <ProjectReference Include="..\Cua.Desktop\Cua.Desktop.csproj" />
+  </ItemGroup>
+
+</Project>

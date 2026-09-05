@@ -25,6 +25,8 @@ and replay logs are in [evidence/](evidence/).
 | `src/Cua.Web` | Playwright implementation of the surface seam (frames, locator chains, waits, human-action recorder). |
 | `src/Cua.Engine` | Discovery agent (Anthropic API loop + artifact compiler) and the deterministic replay engine. |
 | `src/Cua.Cli` | `cua` command line. |
+| `src/Cua.Mcp` | MCP server: the capability catalog as agent-callable tools (approved artifacts only) plus artifacts as readable resources. |
+| `src/Cua.Hosting` | Shared composition root: surface factory, .env loading. |
 | `tests/Cua.Tests` | Unit tests for the load-bearing logic (outcome taxonomy, retries, escalation/resume, guards, policy, redaction, compiler). |
 | `mock-modern-web/` | The modern-web target: a semantic single-document SPA with `data-testid` hooks, `aria-live` status, and a native `<dialog>` modal — the opposite of the legacy mock, so the locator ranking difference is demonstrable. Static; serve with `python -m http.server 8090`. |
 | `mock-legacy-desktop/` | The desktop target: a WinForms thick-client build of the same fee-waiver workflow (late-built module pane, busy indicator removed from the UIA tree, security overlay on the root window outside the module pane). Proves one replay engine drives two surfaces. |
@@ -154,6 +156,23 @@ Same contract as the legacy and desktop bindings; the locator chain leans on
 ```bash
 dotnet run --project src/Cua.Cli -- list
 ```
+
+**8. …and the same catalog over MCP, invoked by an agent:**
+
+```bash
+# walks initialize -> tools/list -> resources/list -> tools/call
+python scripts/mcp_demo.py                                          # success
+python scripts/mcp_demo.py firstcore_fee_waiver__firstcore_modern 99999   # business outcome
+```
+
+Only **approved** artifacts become callable tools; drafts stay readable as
+resources for review. A business outcome comes back with `isError: false` —
+"account is closed" is an answer for the calling agent, not a failure. See
+[evidence/mcp-capability-interface/](evidence/mcp-capability-interface/).
+
+To wire it into an MCP client, run `src/Cua.Mcp/bin/Debug/net9.0-windows/cua-mcp.exe`
+with the repo as the working directory (`--capabilities` and `--evidence`
+override the defaults).
 
 ## Running without live services
 

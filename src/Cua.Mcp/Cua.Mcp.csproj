@@ -2,8 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Cua.Core\Cua.Core.csproj" />
-    <ProjectReference Include="..\Cua.Web\Cua.Web.csproj" />
-    <ProjectReference Include="..\Cua.Desktop\Cua.Desktop.csproj" />
     <ProjectReference Include="..\Cua.Engine\Cua.Engine.csproj" />
     <ProjectReference Include="..\Cua.Hosting\Cua.Hosting.csproj" />
   </ItemGroup>
@@ -13,6 +11,7 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>cua-mcp</AssemblyName>
   </PropertyGroup>
 
 </Project>

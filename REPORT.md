@@ -250,6 +250,17 @@ recording, and resume semantics are real and unit-tested.
   pattern+literal, not NER/DLP. The risky-text patterns are a backstop; the
   durable control is approval-gated replay of irreversible steps.
 
+**Agent-facing interface.** The catalog is exposed over MCP (`src/Cua.Mcp`):
+each approved artifact becomes a callable tool whose JSON Schema is derived
+from its typed inputs, and every artifact — drafts included — is a readable
+resource for review. Callable and reviewable are deliberately different sets,
+which is the approval gate expressed in the protocol. Invocation returns the
+replay result contract verbatim, and the classification survives the boundary:
+a business outcome comes back with `isError: false`, because "account is
+closed" is an answer the calling agent must act on, not a failure to retry.
+Escalations return `escalation_pending` rather than blocking on a terminal the
+agent cannot see. Demonstrated in `evidence/mcp-capability-interface/`.
+
 ## 7. Cuts
 
 Deliberate, with the seams left clean:
@@ -267,5 +278,8 @@ Deliberate, with the seams left clean:
   dump is exactly its input.
 - **Stability scoring** — replay N times, score flakiness, gate approval;
   fallback-rank logging is the hook.
+- **MCP server tests** — the protocol layer is covered by an end-to-end demo
+  client, not unit tests; the test project would need retargeting to
+  net9.0-windows to reference it.
 - **Session recovery breadth** — only session-expiry re-auth is implemented;
   production needs a per-app taxonomy of recoverable session states.
