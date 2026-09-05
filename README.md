@@ -77,33 +77,36 @@ the recorded flow it **probes** the variant accounts (probe actions are excluded
 from the compiled flow) so every declared outcome condition is grounded in text
 it actually observed — see REPORT.md §3 for the failure mode this prevents.
 
-This emits `capabilities/firstcore.fee_waiver.v1.json` (a **draft**) and full
-evidence under `evidence/discovery-*/` (JSONL log, redacted model transcript,
-screenshots, the model's declaration).
+This emits a new **draft** artifact plus full evidence under
+`evidence/discovery-*/` (JSONL log, redacted model transcript, screenshots,
+the model's declaration). The repo ships two recordings from this command:
+`…firstcore-legacy.v1.json` is kept deliberately as the **failure exhibit**
+(ungrounded outcome conditions — REPORT §3), and `…firstcore-legacy.v2.json`
+is the probe-grounded, reviewed, approved artifact the demos below replay.
 
 **2. Review & approve** (a human reads the artifact, then):
 
 ```bash
-dotnet run --project src/Cua.Cli -- approve --artifact capabilities/firstcore.fee_waiver.v1.json
+dotnet run --project src/Cua.Cli -- approve --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json
 ```
 
 **3. Deterministic replay — the production path, no LLM:**
 
 ```bash
 # happy path: fee waived, confirmation extracted
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.v1.json \
+dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
   --input account_id=12345 --ack-risk
 
 # expected business outcome, not a crash: closed account → outcome=not_permitted
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.v1.json \
+dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
   --input account_id=99999 --ack-risk
 
 # transient host congestion → declared retry policy → success
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.v1.json \
+dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
   --input account_id=55555 --ack-risk
 
 # unknown account → outcome=not_found
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.v1.json \
+dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
   --input account_id=77777 --ack-risk
 ```
 
@@ -113,13 +116,13 @@ dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee
 # attended: the security modal triggers an escalation; YOU take over the live
 # browser window (enter manager PIN 7391, click Authorize), then press ENTER
 # in the terminal to hand control back; the run resumes and completes.
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.v1.json \
+dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
   --input account_id=00000 --ack-risk --headed
 
 # unattended: the same condition routes an intervention request (context,
 # screenshot, resume plan) to the operator queue and parks the run as
 # escalation_pending.
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.v1.json \
+dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
   --input account_id=00000 --ack-risk --operator queue
 ```
 

@@ -1,0 +1,19 @@
+{
+  "status": "success",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 2,
+  "run_id": "replay-▮▮REDACTED▮▮-▮▮REDACTED▮▮",
+  "outputs": {
+    "confirmation_message": "FEE-▮▮REDACTED▮▮▮▮REDACTED▮▮. 35.00▮▮REDACTED▮▮ to account ▮▮REDACTED▮▮. RVSL-D528DE87▮▮REDACTED▮▮",
+    "outcome": "waived",
+    "confirmation_number": "RVSL-D528DE87",
+    "fee_ref": "FEE-▮▮REDACTED▮▮",
+    "waived_amount": "35.00"
+  },
+  "outcome": "waived",
+  "human_assisted": false,
+  "evidence_dir": "evidence\\replay-▮▮REDACTED▮▮-▮▮REDACTED▮▮",
+  "started_at": "2026-09-05T22:01:09.▮▮REDACTED▮▮+00:00",
+  "ended_at": "2026-09-05T22:01:26.▮▮REDACTED▮▮+00:00",
+  "duration_ms": ▮▮REDACTED▮▮
+}

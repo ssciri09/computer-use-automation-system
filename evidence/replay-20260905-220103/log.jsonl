@@ -1,0 +1,34 @@
+{"ts":"2026-09-05T22:01:09.8654727\u002B00:00","run_id":"replay-20260905-220103","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":2,"surface_kind":"legacy_web","inputs":["account_id"],"approval":"approved"}}
+{"ts":"2026-09-05T22:01:10.5277279\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s1","action":"type","frame":[],"risk":"safe","note":"Enter operator user id"}}
+{"ts":"2026-09-05T22:01:10.8993702\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s1"}}
+{"ts":"2026-09-05T22:01:10.9015544\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s2","action":"type","frame":[],"risk":"safe","note":"Enter ▮▮REDACTED▮▮ password"}}
+{"ts":"2026-09-05T22:01:11.0039964\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s2"}}
+{"ts":"2026-09-05T22:01:11.0042960\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s3","action":"click","frame":[],"risk":"safe","note":"Sign On"}}
+{"ts":"2026-09-05T22:01:12.6314845\u002B00:00","run_id":"replay-20260905-220103","kind":"assertion_matched","data":{"step":"s3","class":"success","when":"Css:#ext-gen33"}}
+{"ts":"2026-09-05T22:01:12.6573067\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s3"}}
+{"ts":"2026-09-05T22:01:12.6574748\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s4","action":"click","frame":[],"risk":"safe","note":"Acknowledge notice"}}
+{"ts":"2026-09-05T22:01:13.1376255\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s4"}}
+{"ts":"2026-09-05T22:01:13.2405296\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s5","action":"click","frame":["navFrm"],"risk":"safe","note":"Expand Account Servicing"}}
+{"ts":"2026-09-05T22:01:13.8698893\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s5"}}
+{"ts":"2026-09-05T22:01:13.8892441\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s6","action":"click","frame":["navFrm"],"risk":"safe","note":"Expand Account Servicing via \u002B toggle"}}
+{"ts":"2026-09-05T22:01:14.1783849\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s6"}}
+{"ts":"2026-09-05T22:01:14.1858004\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s7","action":"click","frame":["navFrm"],"risk":"safe","note":"Open Fee Management"}}
+{"ts":"2026-09-05T22:01:16.5408500\u002B00:00","run_id":"replay-20260905-220103","kind":"wait_ok","data":{"step":"s7","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T22:01:17.9143155\u002B00:00","run_id":"replay-20260905-220103","kind":"assertion_matched","data":{"step":"s7","class":"success","when":"Css:#ext-gen42_input"}}
+{"ts":"2026-09-05T22:01:17.9181394\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s7"}}
+{"ts":"2026-09-05T22:01:18.0106774\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s8","action":"type","frame":["wrkFrm","modFrm"],"risk":"safe","note":"Enter account id"}}
+{"ts":"2026-09-05T22:01:18.3175785\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s8"}}
+{"ts":"2026-09-05T22:01:18.3239958\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s9","action":"click","frame":["wrkFrm","modFrm"],"risk":"safe","note":"Execute Inquiry"}}
+{"ts":"2026-09-05T22:01:22.2685026\u002B00:00","run_id":"replay-20260905-220103","kind":"wait_ok","data":{"step":"s9","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T22:01:22.3255541\u002B00:00","run_id":"replay-20260905-220103","kind":"assertion_matched","data":{"step":"s9","class":"success","when":"Css:#ext-gen77"}}
+{"ts":"2026-09-05T22:01:22.3258125\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s9"}}
+{"ts":"2026-09-05T22:01:22.3349654\u002B00:00","run_id":"replay-20260905-220103","kind":"risk_flagged","data":{"step":"s10","note":"irreversible step executed under approved artifact \u002B --ack-risk"}}
+{"ts":"2026-09-05T22:01:22.3372456\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s10","action":"click","frame":["wrkFrm","modFrm"],"risk":"irreversible","note":"Waive Fee for FEE-88213"}}
+{"ts":"2026-09-05T22:01:25.1711120\u002B00:00","run_id":"replay-20260905-220103","kind":"wait_ok","data":{"step":"s10","value":"#loading-spinner","state":"absent"}}
+{"ts":"2026-09-05T22:01:25.2746607\u002B00:00","run_id":"replay-20260905-220103","kind":"assertion_matched","data":{"step":"s10","class":"success","when":"TextContains:reversed. Credit of"}}
+{"ts":"2026-09-05T22:01:25.2749858\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s10"}}
+{"ts":"2026-09-05T22:01:25.3060549\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"s11","action":"read","frame":["wrkFrm","modFrm"],"risk":"safe"}}
+{"ts":"2026-09-05T22:01:25.5951125\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"s11"}}
+{"ts":"2026-09-05T22:01:25.6413978\u002B00:00","run_id":"replay-20260905-220103","kind":"step_started","data":{"step":"checkpoint","action":"checkpoint","frame":["wrkFrm","modFrm"],"risk":"safe","note":"verifies the goal state and extracts declared outputs"}}
+{"ts":"2026-09-05T22:01:25.7876411\u002B00:00","run_id":"replay-20260905-220103","kind":"assertion_matched","data":{"step":"checkpoint","class":"success","when":"TextContains:reversed. Credit of"}}
+{"ts":"2026-09-05T22:01:25.8376526\u002B00:00","run_id":"replay-20260905-220103","kind":"step_ok","data":{"step":"checkpoint"}}
