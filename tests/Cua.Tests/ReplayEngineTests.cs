@@ -445,6 +445,20 @@ public sealed class ReplayEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task Engine_IsSingleUse_SecondRunThrows()
+    {
+        var surface = new FakeSurface();
+        var artifact = Artifact([new StepDef { Id = "s1", Action = StepAction.Checkpoint }]);
+        var (engine, log) = Engine(surface);
+        using (log)
+        {
+            await engine.RunAsync(artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None);
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                engine.RunAsync(artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None));
+        }
+    }
+
+    [Fact]
     public async Task InputValidation_PatternMismatch_Throws()
     {
         var surface = new FakeSurface();

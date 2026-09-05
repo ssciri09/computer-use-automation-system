@@ -44,6 +44,7 @@ public sealed class DiscoveryAgent(
 {
     private readonly List<TraceStep> _trace = [];
     private int _stepCounter;
+    private int _modelTurns;
     private long _inputTokens, _outputTokens;
 
     public async Task<DiscoveryResult> RunAsync(
@@ -89,6 +90,7 @@ public sealed class DiscoveryAgent(
                 Tools = tools,
                 Messages = messages,
             });
+            _modelTurns++;
             _inputTokens += response.Usage.InputTokens;
             _outputTokens += response.Usage.OutputTokens;
             RecordTranscript(turn, response);
@@ -465,7 +467,7 @@ public sealed class DiscoveryAgent(
             RunId = log.RunId,
             EvidenceDir = log.Dir,
             Steps = _trace.Count,
-            ModelTurns = 0, // filled by caller display; token counts below are authoritative
+            ModelTurns = _modelTurns,
             InputTokens = _inputTokens,
             OutputTokens = _outputTokens,
         };
@@ -481,6 +483,7 @@ public sealed class DiscoveryAgent(
             RunId = log.RunId,
             EvidenceDir = log.Dir,
             Steps = _trace.Count,
+            ModelTurns = _modelTurns,
             InputTokens = _inputTokens,
             OutputTokens = _outputTokens,
         };

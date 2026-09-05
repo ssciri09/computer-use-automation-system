@@ -77,7 +77,7 @@ static async Task<int> DiscoverAsync(Opts o)
     Console.WriteLine(result.Succeeded
         ? $"OK  capability recorded: {result.ArtifactPath}"
         : $"FAIL  discovery failed: {result.FailureReason}");
-    Console.WriteLine($"  steps: {result.Steps}   tokens: {result.InputTokens} in / {result.OutputTokens} out");
+    Console.WriteLine($"  steps: {result.Steps}   model turns: {result.ModelTurns}   tokens: {result.InputTokens} in / {result.OutputTokens} out");
     Console.WriteLine($"  evidence: {result.EvidenceDir}");
     if (result.Succeeded)
         Console.WriteLine($"  next: review the artifact, then 'cua approve --artifact {result.ArtifactPath}'");

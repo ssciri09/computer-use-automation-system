@@ -23,6 +23,8 @@ public sealed record ReplayOptions
 /// involvement. Locator chains give stable targeting; declared assertions give
 /// the outcome taxonomy (success / business outcome / recoverable / escalate);
 /// anything unrecognized is a hard failure with expected-vs-observed evidence.
+/// Single-use: run state lives on the instance, so construct one engine per
+/// run — a second RunAsync on the same instance throws.
 /// </summary>
 public sealed class ReplayEngine(
     ISurface surface,
@@ -39,11 +41,16 @@ public sealed class ReplayEngine(
     private bool _humanAssisted;
     private bool _authRecovered;
     private DateTimeOffset _startedAt;
+    private int _runs;
 
     public async Task<ReplayResult> RunAsync(
         CapabilityArtifact artifact, IReadOnlyDictionary<string, string> inputs,
         ReplayOptions options, CancellationToken outerCt)
     {
+        if (Interlocked.Exchange(ref _runs, 1) != 0)
+            throw new InvalidOperationException(
+                "ReplayEngine is single-use: run state (outputs, intervention, auth recovery) " +
+                "lives on the instance — construct a new engine per run");
         _artifact = artifact;
         _inputs = inputs;
         _startedAt = DateTimeOffset.UtcNow;
