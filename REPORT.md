@@ -203,6 +203,19 @@ recording, and resume semantics are real and unit-tested.
   screen captures (failure dumps, escalation digests) get a stricter document
   tier that also masks account-shaped digit runs, protecting *bystander*
   customers visible on shared screens.
+- **Worked example — one click through every layer.** The discovery model
+  under-declares the "Waive Fee" click as `risk: safe`; the gate's text
+  patterns upgrade it to `irreversible` (evidence: `risk_flagged` in the run
+  log). At replay the step runs unattended only because a human approved the
+  artifact *and* the caller passed `--ack-risk` — remove either and it pauses
+  for human confirmation. The click fires and the screen shows only a
+  HOST-0521 congestion banner: did the waive post? Unknown — so the engine
+  refuses the retry (`retry_refused`) and escalates instead of risking a
+  double-post. Had the model tried `navigate` to a vendor-docs site first,
+  the transcript would show `POLICY_BLOCKED: host … not in the allowlist`.
+  And when a failure dump captures the fee register, bystander account
+  `40219` is persisted as `▮▮REDACTED▮▮` while the caller still receives the
+  real `RVSL-…` confirmation — outputs go to the caller, not the logs.
 - **Limits:** discovery necessarily shows on-screen data to the model, so it
   runs against test/sandbox data; replay sends nothing anywhere. Redaction is
   pattern+literal, not NER/DLP. The risky-text patterns are a backstop; the
