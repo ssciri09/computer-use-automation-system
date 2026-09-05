@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Cua.Core\Cua.Core.csproj" />
-    <ProjectReference Include="..\Cua.Web\Cua.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
