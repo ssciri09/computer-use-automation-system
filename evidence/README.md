@@ -1,109 +1,127 @@
-# Fresh end-to-end evidence
+# Evidence reviewer guide
 
-All evidence below was generated on 2026-09-10 against the fabricated local
-FirstCore target. The capability under test is
-`capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json`.
+This folder contains fresh evidence generated on 2026-09-10 against the
+fabricated local FirstCore banking target. No real customer data is present.
 
-`example-artifact.json` is the submission evidence snapshot of that approved
-artifact. It is copied byte-for-byte from the canonical capability so the
-complete demonstration is self-contained under `/evidence/`.
+The long directory names are immutable run IDs. They connect every result,
+event, intervention, and screenshot to one execution. Follow the short path
+below; the later sections are supporting proof.
 
-## Genuine LLM discovery
+## Five-minute required review
 
-`discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/`
+### 1. Review the saved capability
 
-- Real Anthropic-driven observe/decide/act run against the live legacy UI.
-- 34 model turns and 21 recorded actions, including post-success probes.
-- Contains the structured run log, redacted model transcript, model
-  declaration, and synthetic-target screenshots.
-- Compiled the reusable flow plus grounded `not_found`, `account_closed`,
-  transient host-congestion, and manager-override conditions.
+Open [example-artifact.json](example-artifact.json).
 
-## Deterministic replay: success
+This is a byte-for-byte snapshot of the approved canonical artifact at
+`/capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json`. Focus on:
 
-`replay-20260910-041027-535-e8f0c90c9290487e81d9622e6c447024/`
+- typed `account_id` input and declared outputs;
+- ranked locator candidates and nested frame paths;
+- `success`, `business_outcome`, `recoverable`, and `escalate` assertions;
+- irreversible risk classification and final checkpoint;
+- approval, provenance, redaction, vendor, tenant, and surface metadata.
 
-- Status: `success`
-- Checkpoint verified after the irreversible fee-waiver action.
-- Returned `outcome=waived` plus confirmation, fee-reference, and amount
-  fields to the caller. Raw extracted values are masked in persisted evidence.
+### 2. Confirm genuine LLM discovery
 
-## Deterministic replay: business outcome
+Run:
+[`discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/`](discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/)
 
-`replay-20260910-041042-869-015469c479e84ffe844701f8fef16eaa/`
+Open in this order:
 
-- Status: `business_outcome`
-- Outcome: `not_found`
-- Terminated deliberately at inquiry step `s9`; no waiver action was attempted.
+1. [log.jsonl](discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/log.jsonl)
+   — 34 model turns and 21 executed actions.
+2. [transcript.jsonl](discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/transcript.jsonl)
+   — redacted model/tool conversation.
+3. [declaration.json](discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/declaration.json)
+   — semantic contract emitted separately from the mechanical trace.
+4. [initial screenshot](discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/01-initial.png)
+   and [manager-interception screenshot](discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/14-s21-click.png)
+   — richer visual evidence from the synthetic target.
 
-## Deterministic replay: recoverable condition
+The model completed the successful flow, then probed fabricated variants to
+ground the not-found, closed-account, congestion, and override conditions.
+Probe actions were not compiled into deterministic replay.
 
-`replay-20260910-041055-252-b99b39146e094a4e953ba82fc1740247/`
+### 3. Confirm deterministic success
 
-- Status: `success`
-- Detected host code `HOST-0521` twice.
-- Applied declared 2-second and 5-second backoffs, retried the same step, then
-  continued only after the success assertion matched.
+Run:
+[`replay-20260910-041027-535-e8f0c90c9290487e81d9622e6c447024/`](replay-20260910-041027-535-e8f0c90c9290487e81d9622e6c447024/)
 
-## Deterministic replay: escalation
+- [result.json](replay-20260910-041027-535-e8f0c90c9290487e81d9622e6c447024/result.json)
+  reports `success` and `outcome=waived`.
+- [log.jsonl](replay-20260910-041027-535-e8f0c90c9290487e81d9622e6c447024/log.jsonl)
+  shows policy checks, waits, assertions, extraction, and checkpoint success.
+- No replay event invokes an LLM.
 
-`replay-20260910-041131-982-cfe51a0e932949a5ab74e4cd5cdf46db/`
+### 4. Confirm exceptional-state handling
 
-- Status: `escalation_pending`
-- Detected the top-frame manager-override security modal at step `s10`.
-- Saved redacted context and resume intent in
-  `operator-queue/intervention-replay-20260910-041131-982-cfe51a0e932949a5ab74e4cd5cdf46db-s10.json`.
-- Queue mode is notification-only; the unattended CLI session is closed after
-  routing. Attended mode is the implemented same-live-session takeover path.
+Expected business answer:
 
-## Attended handoff: resolved on the same live session
+- [not-found result](replay-20260910-041042-869-015469c479e84ffe844701f8fef16eaa/result.json)
+  reports `business_outcome`, not failure.
+- Its [event log](replay-20260910-041042-869-015469c479e84ffe844701f8fef16eaa/log.jsonl)
+  stops at inquiry step `s9`; no waiver is attempted.
 
-`replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a/`
+Recoverable runtime condition:
 
-- Status: `success`
-- `human_assisted=true` with a resolved intervention record.
-- Automation transferred its enforced control token to the operator and
-  remained paused until an external handback signal was received.
-- `human_actions.jsonl` records three actions from the live browser: focus the
-  override field, masked PIN input, and the Authorize click.
-- Replay reclaimed control, jumped to the declared checkpoint, and verified
-  the reversal confirmation without invoking an LLM.
+- [retry result](replay-20260910-041055-252-b99b39146e094a4e953ba82fc1740247/result.json)
+  ends in `success`.
+- Its [event log](replay-20260910-041055-252-b99b39146e094a4e953ba82fc1740247/log.jsonl)
+  records two `HOST-0521` matches and bounded 2-second/5-second backoffs.
 
-Every replay above used the saved approved artifact and made no LLM call.
+### 5. Confirm real human handoff and resume
 
-## Additional surface binding: modern web
+Run:
+[`replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a/`](replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a/)
 
-`replay-20260910-042141-875-077ad5c195294f548f31a7ef2fdf169e/`
+Open:
 
-- Artifact:
-  `capabilities/firstcore.fee_waiver.firstcore-modern.v1.json`
-- Status: `success`
-- Used semantic `data-testid`/ARIA locator chains in a single-document web UI.
-- Returned the shared waiver contract plus the modern surface's optional
-  `account_name` output.
+1. [result.json](replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a/result.json)
+   — `success`, resolved intervention, and `human_assisted=true`.
+2. [human_actions.jsonl](replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a/human_actions.jsonl)
+   — focus, masked PIN input, and Authorize click recorded while the human held
+   the same live browser session.
+3. [log.jsonl](replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a/log.jsonl)
+   — intervention, handback, resume jump, and independent checkpoint.
+4. [operator request](operator-signals/intervention-replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a-s10.json)
+   — redacted current state, reason, and resume plan supplied to the operator.
 
-## Additional surface binding: native desktop
+## Supporting robustness evidence
 
-`replay-20260910-042259-024-2dbfccfb12cf4dd5a2467b4b0bb4b75a/`
+### Unattended escalation
 
-- Artifact:
-  `capabilities/firstcore.fee_waiver.firstcore-desktop.v1.json`
-- Status: `success`
-- Used Windows UI Automation IDs, accessible names, and pane paths.
-- Verified the same checkpoint and returned the shared waiver outputs.
+[Result](replay-20260910-041131-982-cfe51a0e932949a5ab74e4cd5cdf46db/result.json)
+reports `escalation_pending`. The
+[queued request](operator-queue/intervention-replay-20260910-041131-982-cfe51a0e932949a5ab74e4cd5cdf46db-s10.json)
+contains redacted context and resume intent. Queue mode is deliberately
+notification-only; attended mode above proves live-session handoff.
 
-Both bindings replayed deterministically with no LLM call. Persisted business
-outputs are masked while result status, timing, and evidence identity remain
-reviewable.
+### Heterogeneous surfaces
 
-## Agent-facing MCP invocation
+- [Modern-web result](replay-20260910-042141-875-077ad5c195294f548f31a7ef2fdf169e/result.json)
+  — same capability contract through semantic `data-testid`/ARIA locators.
+- [Native-desktop result](replay-20260910-042259-024-2dbfccfb12cf4dd5a2467b4b0bb4b75a/result.json)
+  — same engine through Windows UI Automation IDs, names, and pane paths.
 
-`mcp-20260910-044023-302-fde85e678a6044b4908cf9bdc641b256/`
+Both are successful model-free replays.
 
-- An MCP client discovered all approved bindings through `tools/list`, including
-  their typed input schemas.
-- A call without `ack_risk=true` was refused because the capability contains an
-  irreversible action.
-- The acknowledged call invoked
-  `firstcore_fee_waiver__firstcore_modern` and returned `success`.
-- Full protocol walkthrough: `mcp-capability-interface/README.md`.
+## Optional stretch evidence
+
+### Agent-facing MCP invocation
+
+Open [the MCP walkthrough](mcp-capability-interface/README.md), then inspect:
+
+- [MCP result](mcp-20260910-044023-302-fde85e678a6044b4908cf9bdc641b256/result.json)
+- [MCP replay log](mcp-20260910-044023-302-fde85e678a6044b4908cf9bdc641b256/log.jsonl)
+
+The client discovered three approved typed tools, proved that an irreversible
+call without `ack_risk=true` is refused, then invoked the modern binding and
+received the normal structured success contract.
+
+## Reading persisted values
+
+Immediate callers receive typed business outputs. Persisted copies mask
+sensitive inputs, credentials, names, account identifiers, confirmation
+references, and extracted values. Raw screenshots are disabled by default and
+were enabled only for the explicitly fabricated discovery target.
