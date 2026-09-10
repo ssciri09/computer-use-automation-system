@@ -4,6 +4,10 @@ All evidence below was generated on 2026-09-10 against the fabricated local
 FirstCore target. The capability under test is
 `capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json`.
 
+`example-artifact.json` is the submission evidence snapshot of that approved
+artifact. It is copied byte-for-byte from the canonical capability so the
+complete demonstration is self-contained under `/evidence/`.
+
 ## Genuine LLM discovery
 
 `discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/`
