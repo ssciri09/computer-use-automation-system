@@ -105,6 +105,9 @@ public sealed record SurfaceInfo
     public SurfaceKind Kind { get; init; } = SurfaceKind.Web;
     public required string EntryUrl { get; init; }
     public required IReadOnlyList<string> Allowlist { get; init; }
+    /// <summary>Action types approved for this capability. Runtime policy may narrow, never broaden, this set.</summary>
+    public IReadOnlyList<StepAction> AllowedActions { get; init; } =
+        [StepAction.Navigate, StepAction.Click, StepAction.Type, StepAction.Select, StepAction.Read, StepAction.Checkpoint];
     /// <summary>
     /// Which installed application this artifact drives (e.g. "firstcore-web",
     /// "firstcore-desktop"). One capability can have sibling artifacts across

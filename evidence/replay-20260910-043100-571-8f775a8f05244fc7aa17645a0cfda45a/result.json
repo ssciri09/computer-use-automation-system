@@ -1,0 +1,26 @@
+{
+  "status": "success",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 1,
+  "run_id": "replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a",
+  "outputs": {
+    "outcome": "waived",
+    "confirmation_number": "▮▮REDACTED▮▮",
+    "fee_ref": "▮▮REDACTED▮▮"
+  },
+  "outcome": "waived",
+  "intervention": {
+    "reason": "Host demands a Manager Override PIN before posting the reversal; modal is injected into the TOP document (fields #ext-gen99_pin, Authorize #ext-gen101). A human with override authority must supply the PIN.",
+    "at_step_id": "s10",
+    "raised_at": "2026-09-10T04:31:14.872497+00:00",
+    "resolved_at": "2026-09-10T04:32:41.6301616+00:00",
+    "▮▮REDACTED▮▮_notes": "completed by ▮▮REDACTED▮▮ in the live browser",
+    "human_actions_path": "human_actions.jsonl",
+    "resolution": "resolved"
+  },
+  "human_assisted": true,
+  "evidence_dir": "evidence\\replay-20260910-043100-571-8f775a8f05244fc7aa17645a0cfda45a",
+  "started_at": "2026-09-10T04:31:02.9183839+00:00",
+  "ended_at": "2026-09-10T04:32:41.658421+00:00",
+  "duration_ms": 98740
+}

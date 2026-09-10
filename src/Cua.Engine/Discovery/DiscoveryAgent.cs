@@ -59,7 +59,10 @@ public sealed class DiscoveryAgent(
         var credsRef = new CredentialsRef { Ref = config.CredentialsRef };
         var username = CredentialResolver.Resolve(credsRef, "username");
         var password = CredentialResolver.Resolve(credsRef, "password");
+        redactor.AddLiteral(username);
         redactor.AddLiteral(password);
+        foreach (var value in config.Parameters.Values)
+            redactor.AddLiteral(value);
 
         log.Log("discovery_started", new
         {
@@ -229,6 +232,10 @@ public sealed class DiscoveryAgent(
         ToolUseBlock tu, DiscoveryConfig config, string username, string password,
         ArtifactStore store, CancellationToken ct)
     {
+        if (IsRecordedAction(tu.Name) && _trace.Count >= policy.Config.MaxSteps)
+            return ("", Fail(config,
+                $"discovery reached the configured maximum of {policy.Config.MaxSteps} recorded steps"));
+
         try
         {
             switch (tu.Name)
@@ -374,6 +381,9 @@ public sealed class DiscoveryAgent(
         var frame = FramePath(tu);
         var locator = LocatorFrom(tu);
         var option = Str(tu, "option") ?? "";
+        var decision = policy.CheckAction(
+            StepAction.Select, await surface.CurrentUrlAsync(), RiskLevel.Safe, null);
+        if (decision.IsBlocked) return $"POLICY_BLOCKED: {decision.Reason}";
         var target = await ResolveAsync(frame, locator, ct);
         if (target is null) return NotResolved(locator, frame);
         await surface.SelectAsync(target, option, ct);
@@ -391,6 +401,9 @@ public sealed class DiscoveryAgent(
         var frame = FramePath(tu);
         var locator = LocatorFrom(tu);
         var outputName = Str(tu, "output_name") ?? "value";
+        var decision = policy.CheckAction(
+            StepAction.Read, await surface.CurrentUrlAsync(), RiskLevel.Safe, null);
+        if (decision.IsBlocked) return $"POLICY_BLOCKED: {decision.Reason}";
         var target = await ResolveAsync(frame, locator, ct);
         if (target is null) return NotResolved(locator, frame);
         var text = await surface.ReadTextAsync(target, ct);
@@ -445,7 +458,7 @@ public sealed class DiscoveryAgent(
     {
         var declaration = JsonSerializer.SerializeToElement(
             tu.Input.ToDictionary(kv => kv.Key, kv => kv.Value));
-        log.SaveText("declaration.json", JsonSerializer.Serialize(declaration,
+        log.SaveDocument("declaration.json", JsonSerializer.Serialize(declaration,
             new JsonSerializerOptions { WriteIndented = true }));
 
         var artifact = ArtifactCompiler.Compile(new ArtifactCompiler.Input
@@ -454,6 +467,7 @@ public sealed class DiscoveryAgent(
             Trace = _trace,
             Declaration = declaration,
             AllowedHosts = policy.Config.AllowedHosts,
+            AllowedActions = policy.Config.AllowedActions,
             RunId = log.RunId,
             NextVersion = store.NextVersion(config.CapabilityId, config.AppBinding),
         });
@@ -578,6 +592,9 @@ public sealed class DiscoveryAgent(
 
     private static bool Probe(ToolUseBlock tu) =>
         tu.Input.TryGetValue("probe", out var p) && p.ValueKind == JsonValueKind.True;
+
+    private static bool IsRecordedAction(string toolName) =>
+        toolName is "click" or "type" or "select" or "read" or "navigate";
 
     private static string? Str(ToolUseBlock tu, string key) =>
         tu.Input.TryGetValue(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;

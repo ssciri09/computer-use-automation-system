@@ -21,12 +21,14 @@ public sealed class FakeSurface : ISurface
     public Dictionary<string, int> ClickCounts { get; } = [];
     public List<string> ActionLog { get; } = [];
     public List<HumanAction> PendingHumanActions { get; } = [];
+    public Exception? NavigateError { get; set; }
 
     public static string Key(IReadOnlyList<string> frame, string css) =>
         string.Join(">", frame) + "|" + css;
 
     public Task NavigateAsync(string url, CancellationToken ct)
     {
+        if (NavigateError is not null) throw NavigateError;
         ActionLog.Add($"navigate:{url}");
         return Task.CompletedTask;
     }

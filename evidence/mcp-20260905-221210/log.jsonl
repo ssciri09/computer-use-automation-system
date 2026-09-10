@@ -1,2 +1,0 @@
-{"ts":"2026-09-05T22:12:21.3725020\u002B00:00","run_id":"mcp-20260905-221210","kind":"replay_started","data":{"capability":"firstcore.fee_waiver","version":1,"surface_kind":"web","inputs":["account_id"],"approval":"approved"}}
-{"ts":"2026-09-05T22:12:21.9162268\u002B00:00","run_id":"mcp-20260905-221210","kind":"step_started","data":{"step":"s1","action":"type","frame":[],"risk":"safe"}}

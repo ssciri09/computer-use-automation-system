@@ -4,6 +4,7 @@ using Cua.Core.Artifacts;
 using Cua.Core.Contracts;
 using Cua.Core.Evidence;
 using Cua.Core.Hitl;
+using Cua.Core.Policy;
 using Cua.Core.Redaction;
 using Cua.Engine.Replay;
 using Cua.Hosting;
@@ -20,8 +21,9 @@ namespace Cua.Mcp;
 /// Two deliberate constraints make this safe to hand an agent:
 ///   - only *approved* artifacts are listed and callable; drafts are
 ///     discoverable as resources for review but cannot be invoked;
-///   - invocation is unattended, so an escalation parks the run and returns
-///     escalation_pending rather than blocking on a human at a terminal.
+///   - invocation is unattended, so an escalation records a notification and
+///     returns escalation_pending rather than blocking on a terminal. The
+///     built-in queue does not retain the live process/session.
 ///
 /// The protocol layer is hand-rolled: it is ~200 lines of well-understood
 /// JSON-RPC, which is a smaller commitment than a framework for a surface
@@ -135,6 +137,16 @@ public sealed class CapabilityServer(string capabilitiesDir, string evidenceRoot
             properties[input.Name] = schema;
             if (input.Required) required.Add(input.Name);
         }
+        if (RequiresRiskAcknowledgement(artifact))
+        {
+            properties["ack_risk"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["const"] = true,
+                ["description"] = "Explicit caller acknowledgement that this capability contains an irreversible action",
+            };
+            required.Add("ack_risk");
+        }
 
         var outputs = artifact.Outputs.Select(o =>
             o.EnumValues is { Count: > 0 } v ? $"{o.Name} ({string.Join(" | ", v)})" : o.Name);
@@ -180,16 +192,25 @@ public sealed class CapabilityServer(string capabilitiesDir, string evidenceRoot
                 : ToolError(id, $"unknown capability '{name}'");
         }
 
+        var provided = args?["arguments"] as JsonObject;
+        var requiresAck = RequiresRiskAcknowledgement(match.Artifact);
+        var ackRisk = provided?["ack_risk"] is JsonValue ackValue &&
+                      ackValue.TryGetValue<bool>(out var acknowledged) &&
+                      acknowledged;
+        if (requiresAck && !ackRisk)
+            return ToolError(id,
+                $"capability '{name}' contains an irreversible action; invoke it with ack_risk=true");
+
         var inputs = new Dictionary<string, string>();
-        if (args?["arguments"] is JsonObject provided)
+        if (provided is not null)
             foreach (var (key, value) in provided)
-                if (value is not null)
+                if (key != "ack_risk" && value is not null)
                     inputs[key] = value.GetValueKind() == JsonValueKind.String
                         ? value.GetValue<string>()
                         : value.ToJsonString();
 
         Log($"tools/call {name} inputs=[{string.Join(", ", inputs.Keys)}]");
-        var result = await InvokeAsync(match.Artifact, inputs, ct);
+        var result = await InvokeAsync(match.Artifact, inputs, ackRisk, ct);
 
         // The structured result IS the answer; also give a one-line summary so
         // a model reading text content gets the classification immediately.
@@ -199,7 +220,8 @@ public sealed class CapabilityServer(string capabilitiesDir, string evidenceRoot
                                  string.Join(", ", result.Outputs.Select(o => $"{o.Key}={o.Value}")),
             RunStatus.BusinessOutcome => $"BUSINESS OUTCOME: {result.Outcome} — this is a legitimate answer, not a failure",
             RunStatus.EscalationPending => $"ESCALATION PENDING at step {result.Intervention?.AtStepId}: " +
-                                           $"{result.Intervention?.Reason}. A human operator has been asked to take over; the run is parked.",
+                                           $"{result.Intervention?.Reason}. Operator context was queued; " +
+                                           "this notification-only mode does not retain the live session.",
             _ => $"HARD FAILURE at step {result.Failure?.StepId}: expected {result.Failure?.Expected}; observed {result.Failure?.Observed}",
         };
 
@@ -215,7 +237,8 @@ public sealed class CapabilityServer(string capabilitiesDir, string evidenceRoot
     }
 
     private async Task<ReplayResult> InvokeAsync(
-        CapabilityArtifact artifact, IReadOnlyDictionary<string, string> inputs, CancellationToken ct)
+        CapabilityArtifact artifact, IReadOnlyDictionary<string, string> inputs,
+        bool ackRisk, CancellationToken ct)
     {
         var redactor = Redactor.CreateDefault();
         foreach (var pattern in artifact.Redaction.LogPatterns) redactor.AddPattern(pattern);
@@ -228,14 +251,22 @@ public sealed class CapabilityServer(string capabilitiesDir, string evidenceRoot
         // blocking on a terminal the calling agent cannot see.
         var channel = new QueueOperatorChannel(Path.Combine(evidenceRoot, "operator-queue"));
         await using var surface = await SurfaceFactory.LaunchAsync(artifact.Surface.Kind, headed: false);
-        var engine = new ReplayEngine(surface, channel, log, redactor);
+        var replayPolicy = new PolicyGate(new PolicyConfig
+        {
+            AllowedHosts = artifact.Surface.Allowlist,
+            AllowedActions = artifact.Surface.AllowedActions,
+            SurfaceKind = artifact.Surface.Kind,
+            RiskyMode = RiskyActionMode.Flag,
+        });
+        var engine = new ReplayEngine(surface, replayPolicy, channel, log, redactor);
 
         var result = await engine.RunAsync(artifact, inputs, new ReplayOptions
         {
-            // Only approved artifacts reach here, so irreversible steps may run
-            // unattended — that is precisely what approval authorizes.
-            AckRisk = true,
+            AckRisk = ackRisk,
         }, ct);
+        foreach (var output in artifact.Outputs.Where(d => d.Type != "enum"))
+            if (result.Outputs.TryGetValue(output.Name, out var value) && value is not null)
+                redactor.AddLiteral(value.ToString()!);
         log.SaveText("result.json", CuaJson.Serialize(result));
         return result;
     }
@@ -306,6 +337,9 @@ public sealed class CapabilityServer(string capabilitiesDir, string evidenceRoot
             : artifact.CapabilityId;
         return new string([.. raw.Select(c => char.IsLetterOrDigit(c) || c is '_' ? c : '_')]);
     }
+
+    private static bool RequiresRiskAcknowledgement(CapabilityArtifact artifact) =>
+        artifact.Steps.Any(step => step.Risk == RiskLevel.Irreversible);
 
     private static JsonNode Result(JsonNode id, JsonNode result) =>
         new JsonObject { ["jsonrpc"] = "2.0", ["id"] = id, ["result"] = result };

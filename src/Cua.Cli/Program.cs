@@ -43,8 +43,12 @@ static async Task<int> DiscoverAsync(Opts o)
     var allowHosts = ResolveAllowlist(o, url, kind);
 
     var redactor = Redactor.CreateDefault();
+    foreach (var value in parameters.Values)
+        redactor.AddLiteral(value);
 
-    using var log = new RunLogger(evidenceRoot, "discovery", redactor);
+    using var log = new RunLogger(
+        evidenceRoot, "discovery", redactor,
+        persistRawScreenshots: o.Has("synthetic-evidence"));
     Console.WriteLine($"discovery run {log.RunId}");
     Console.WriteLine($"  goal: {goal}");
     Console.WriteLine($"  surface: {kind}");
@@ -52,6 +56,7 @@ static async Task<int> DiscoverAsync(Opts o)
     var policy = new PolicyGate(new PolicyConfig
     {
         AllowedHosts = allowHosts,
+        AllowedActions = ResolveAllowedActions(o),
         SurfaceKind = kind,
         RiskyMode = ParseRiskyMode(o.Get("risky") ?? "flag"),
         MaxSteps = int.Parse(o.Get("max-steps") ?? "40"),
@@ -99,17 +104,27 @@ static async Task<int> ReplayAsync(Opts o)
         if (inputs.TryGetValue(def.Name, out var v))
             redactor.AddPattern(System.Text.RegularExpressions.Regex.Escape(v));
 
-    using var log = new RunLogger(evidenceRoot, "replay", redactor);
+    using var log = new RunLogger(
+        evidenceRoot, "replay", redactor,
+        persistRawScreenshots: o.Has("synthetic-evidence"));
     Console.WriteLine($"replay run {log.RunId}  ({artifact.CapabilityId} v{artifact.CapabilityVersion} / {artifact.Surface.Kind})");
 
     IOperatorChannel channel = (o.Get("operator") ?? "console") switch
     {
         "queue" => new QueueOperatorChannel(Path.Combine(evidenceRoot, "operator-queue")),
+        "signal" => new SignalFileOperatorChannel(Path.Combine(evidenceRoot, "operator-signals")),
         _ => new ConsoleOperatorChannel(),
     };
 
     await using var surface = await SurfaceFactory.LaunchAsync(artifact.Surface.Kind, o.Has("headed"));
-    var engine = new ReplayEngine(surface, channel, log, redactor);
+    var replayPolicy = new PolicyGate(new PolicyConfig
+    {
+        AllowedHosts = artifact.Surface.Allowlist,
+        AllowedActions = ResolveAllowedActions(o, artifact.Surface.AllowedActions),
+        SurfaceKind = artifact.Surface.Kind,
+        RiskyMode = RiskyActionMode.Flag,
+    });
+    var engine = new ReplayEngine(surface, replayPolicy, channel, log, redactor);
     var result = await engine.RunAsync(artifact, inputs, new ReplayOptions
     {
         AckRisk = o.Has("ack-risk"),
@@ -117,6 +132,11 @@ static async Task<int> ReplayAsync(Opts o)
     }, CancellationToken.None);
 
     var resultJson = CuaJson.Serialize(result);
+    // The caller receives typed outputs, but persisted evidence must not retain
+    // raw extracted business data. Enum outcomes are classifications, not data.
+    foreach (var output in artifact.Outputs.Where(d => d.Type != "enum"))
+        if (result.Outputs.TryGetValue(output.Name, out var value) && value is not null)
+            redactor.AddLiteral(value.ToString()!);
     log.SaveText("result.json", resultJson);
     Console.WriteLine();
     Console.WriteLine(resultJson);
@@ -125,7 +145,7 @@ static async Task<int> ReplayAsync(Opts o)
     {
         RunStatus.Success => $"OK  success{(result.HumanAssisted ? " (human-assisted)" : "")}",
         RunStatus.BusinessOutcome => $"OUTCOME  business outcome: {result.Outcome}",
-        RunStatus.EscalationPending => "PENDING  escalation pending — session context preserved for the operator",
+        RunStatus.EscalationPending => "PENDING  operator notified — evidence and resume intent saved; unattended session closed",
         _ => $"FAIL  hard failure at step {result.Failure?.StepId}: {result.Failure?.Observed}",
     });
     return result.Status is RunStatus.Success or RunStatus.BusinessOutcome ? 0 : 1;
@@ -136,6 +156,7 @@ static int Approve(Opts o)
     var path = o.Require("artifact");
     var store = new ArtifactStore(Path.GetDirectoryName(Path.GetFullPath(path)) ?? "capabilities");
     var artifact = store.Load(path);
+    ArtifactValidator.Validate(artifact);
     if (artifact.Provenance.Approval == "approved")
     {
         Console.WriteLine("already approved");
@@ -182,8 +203,10 @@ static int Help()
           discover  --goal "…" --id <capability_id> [--url <entry>] [--kind web|legacy_web|desktop] [--binding <app>]
                     [--param name=value]… [--headed] [--model claude-opus-5] [--risky flag|confirm|block]
                     [--allow-host host:port]… [--allow-target name]… [--cred-ref env://CUA] [--out capabilities]
+                    [--allow-action click|type|select|read|navigate|checkpoint]… [--synthetic-evidence]
           replay    --artifact <path> [--input name=value]… [--headed]
-                    [--operator console|queue] [--ack-risk] [--allow-draft]
+                    [--operator console|signal|queue] [--ack-risk] [--allow-draft]
+                    [--allow-action <action>]… [--synthetic-evidence]
           approve   --artifact <path>            mark a reviewed artifact approved
           list      [--dir capabilities]          show the capability catalog
           install-browsers                        one-time Playwright Chromium install
@@ -191,6 +214,7 @@ static int Help()
         --kind selects the ISurface adapter (web/legacy_web = Playwright, desktop = UI Automation).
         Omit it to infer: http(s) → web, .exe / file:// / app:// → desktop. Use legacy_web for framesets.
         Replay always uses the kind stamped on the artifact.
+        Raw screenshots are disabled by default. --synthetic-evidence enables them only for fabricated demo data.
 
         env: ANTHROPIC_API_KEY (discovery), CUA_USERNAME / CUA_PASSWORD (target app sign-on)
         """);
@@ -214,6 +238,34 @@ static RiskyActionMode ParseRiskyMode(string s) => s switch
     "block" => RiskyActionMode.Block,
     "confirm" => RiskyActionMode.Confirm,
     _ => RiskyActionMode.Flag,
+};
+
+static IReadOnlyList<StepAction> ResolveAllowedActions(
+    Opts o, IReadOnlyList<StepAction>? maximum = null)
+{
+    var ceiling = maximum ??
+    [
+        StepAction.Navigate, StepAction.Click, StepAction.Type,
+        StepAction.Select, StepAction.Read, StepAction.Checkpoint,
+    ];
+    var requested = o.MultiValues("allow-action").Select(ParseAction).Distinct().ToList();
+    if (requested.Count == 0) return ceiling;
+    var disallowed = requested.Where(a => !ceiling.Contains(a)).ToList();
+    if (disallowed.Count > 0)
+        throw new ArgumentException(
+            $"runtime policy cannot broaden artifact actions: {string.Join(", ", disallowed)}");
+    return requested;
+}
+
+static StepAction ParseAction(string value) => value.Trim().ToLowerInvariant() switch
+{
+    "navigate" => StepAction.Navigate,
+    "click" => StepAction.Click,
+    "type" => StepAction.Type,
+    "select" => StepAction.Select,
+    "read" => StepAction.Read,
+    "checkpoint" => StepAction.Checkpoint,
+    _ => throw new ArgumentException($"unknown action '{value}'"),
 };
 
 /// <summary>Tiny flag parser: --key value, --key (bool), repeated --param name=value.</summary>

@@ -6,8 +6,9 @@ namespace Cua.Core.Contracts;
 ///   Success            — checkpoint verified, declared outputs returned.
 ///   BusinessOutcome    — the app legitimately said no ("no such member",
 ///                        "account closed"). A result, not a crash.
-///   EscalationPending  — a human intervention was raised but not resolved
-///                        (unattended mode); the session context is preserved.
+///   EscalationPending  — a human intervention was raised but not resolved.
+///                        The built-in queue preserves evidence and resume
+///                        intent, not the live process/session.
 ///   HardFailure        — replay could not recognize the state it reached;
 ///                        carries step, expected vs observed, and evidence.
 /// A run resolved live by a human operator completes as Success/BusinessOutcome

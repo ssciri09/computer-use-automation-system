@@ -13,7 +13,7 @@ public sealed class Redactor
 
     private readonly List<Regex> _patterns = [];
     private readonly List<Regex> _documentPatterns = [];
-    private readonly List<string> _literals = [];
+    private readonly List<Regex> _literalPatterns = [];
 
     /// <summary>Built-in patterns for regulated-data hygiene, always on.</summary>
     public static Redactor CreateDefault()
@@ -37,13 +37,26 @@ public sealed class Redactor
     public void AddDocumentPattern(string regex) =>
         _documentPatterns.Add(new Regex(regex, RegexOptions.Compiled, TimeSpan.FromSeconds(1)));
 
+    /// <summary>
+    /// Adds a sensitive regex. The complete match is removed, including any
+    /// capture groups; artifact extraction regexes commonly put the sensitive
+    /// value in group 1, so preserving that group would leak the value.
+    /// </summary>
     public void AddPattern(string regex) =>
         _patterns.Add(new Regex(regex, RegexOptions.Compiled, TimeSpan.FromSeconds(1)));
 
     /// <summary>Exact secret values (resolved credentials, sensitive input values) that must never appear in output.</summary>
     public void AddLiteral(string value)
     {
-        if (!string.IsNullOrEmpty(value)) _literals.Add(value);
+        if (string.IsNullOrEmpty(value)) return;
+        // Treat the value as a complete token. This still masks query/form
+        // values and prose, but a common username such as "operator" cannot
+        // corrupt a structured field name such as "operator_notes".
+        var escaped = Regex.Escape(value);
+        _literalPatterns.Add(new Regex(
+            $@"(?<![A-Za-z0-9_]){escaped}(?![A-Za-z0-9_])",
+            RegexOptions.Compiled,
+            TimeSpan.FromSeconds(1)));
     }
 
     public string Apply(string text) => Apply(text, _patterns);
@@ -58,16 +71,20 @@ public sealed class Redactor
     private string Apply(string text, List<Regex> patterns)
     {
         if (string.IsNullOrEmpty(text)) return text;
-        foreach (var lit in _literals)
-            text = text.Replace(lit, Mask, StringComparison.Ordinal);
+        foreach (var literal in _literalPatterns)
+            text = literal.Replace(text, Mask);
         foreach (var p in patterns)
         {
             try
             {
-                text = p.Replace(text, m =>
-                    m.Groups.Count > 1 && m.Groups[1].Success ? m.Groups[1].Value + Mask : Mask);
+                text = p.Replace(text, Mask);
             }
-            catch (RegexMatchTimeoutException) { /* leave text as-is rather than hang */ }
+            catch (RegexMatchTimeoutException)
+            {
+                // Evidence safety fails closed: an expensive redaction pattern
+                // must never cause the original regulated text to be persisted.
+                return Mask;
+            }
         }
         return text;
     }

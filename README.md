@@ -1,194 +1,287 @@
-# cua — Computer-Use Automation System
+# CUA — Computer-Use Automation System
 
-An LLM discovers how to operate a legacy bank back-office app once; what it
-learns is compiled into a **typed, versioned capability artifact**; production
-runs **replay the artifact deterministically with no model in the loop**, with
-explicit handling for business outcomes, transient conditions, hard failures,
-and human escalation on the live session.
+This repository is a focused end-to-end implementation of record-once,
+replay-many computer-use automation for legacy banking software:
 
-```
-goal (NL) ──► LLM discovery loop ──► capability artifact ──► deterministic replay ──► result contract
-                (observe/decide/act,      (reviewable JSON,        (no LLM; locator chains,   (success | business
-                 policy-gated, recorded)   draft → approved)        assertions, guards)         outcome | escalation
-                                                                        │                       pending | hard failure)
-                                                                        └──► human takeover of the live session when stuck
+```text
+natural-language goal
+  -> LLM observe / decide / act discovery
+  -> typed, reviewable capability artifact
+  -> approved deterministic replay (no LLM)
+  -> success | business outcome | escalation | hard failure
 ```
 
-The design write-up is in [REPORT.md](REPORT.md), with diagrams in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Example artifacts, discovery and
-replay logs are in [evidence/](evidence/).
+The concrete target is a local, deliberately hostile legacy web application:
+framesets, nested frames, generated IDs, non-semantic controls, host latency,
+runtime business errors, and a security modal injected outside the work frame.
+All people, accounts, credentials, and transactions in it are fabricated.
 
-## Layout
+The design write-up is in [REPORT.md](REPORT.md). Detailed visual diagrams are
+in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Fresh run evidence is indexed
+in [evidence/README.md](evidence/README.md).
 
-| Path | What |
-|---|---|
-| `src/Cua.Core` | Surface seam, artifact schema, result contract, policy gate, redaction, evidence, HITL primitives. No dependencies. |
-| `src/Cua.Web` | Playwright implementation of the surface seam (frames, locator chains, waits, human-action recorder). |
-| `src/Cua.Engine` | Discovery agent (Anthropic API loop + artifact compiler) and the deterministic replay engine. |
-| `src/Cua.Cli` | `cua` command line. |
-| `src/Cua.Mcp` | MCP server: the capability catalog as agent-callable tools (approved artifacts only) plus artifacts as readable resources. |
-| `src/Cua.Hosting` | Shared composition root: surface factory, .env loading. |
-| `tests/Cua.Tests` | Unit tests for the load-bearing logic (outcome taxonomy, retries, escalation/resume, guards, policy, redaction, compiler). |
-| `mock-modern-web/` | The modern-web target: a semantic single-document SPA with `data-testid` hooks, `aria-live` status, and a native `<dialog>` modal — the opposite of the legacy mock, so the locator ranking difference is demonstrable. Static; serve with `python -m http.server 8090`. |
-| `mock-legacy-desktop/` | The desktop target: a WinForms thick-client build of the same fee-waiver workflow (late-built module pane, busy indicator removed from the UIA tree, security overlay on the root window outside the module pane). Proves one replay engine drives two surfaces. |
-| `mock-legacy-bank/` | The target: a deliberately hostile mock "FirstCore Banking Platform" (framesets, nested late-injected iframes, `ext-genNN` ids, `<span onclick>` controls, multi-second host latency, security modal that escapes the module frame). Python 3.8+, no dependencies. |
-| `capabilities/` | The capability catalog (recorded artifacts). |
-| `evidence/` | Run evidence: JSONL logs, screenshots, model transcript, results. |
+## Repository layout
 
-## Setup
+- `src/Cua.Core` — artifact and result contracts, surface seam, policy,
+  redaction, evidence, and intervention primitives.
+- `src/Cua.Engine` — the LLM discovery loop, artifact compiler, validator, and
+  deterministic replay engine.
+- `src/Cua.Web` — Playwright web-surface adapter, including nested frames,
+  locator chains, waits, screenshots, and attended human-action recording.
+- `src/Cua.Desktop` — Windows UI Automation adapter demonstrating the same
+  surface contract for native applications.
+- `src/Cua.Cli` — discover, approve, replay, and catalog commands.
+- `src/Cua.Mcp` — an optional agent-facing catalog for approved capabilities.
+- `mock-legacy-bank` — local legacy target used by the demonstrated slice.
+- `capabilities` — typed, versioned capability artifacts.
+- `evidence` — redacted discovery and replay records.
+- `tests/Cua.Tests` — unit and integration-style tests for load-bearing logic.
 
-Prereqs: .NET 9 SDK, Python 3.8+ (for the mock app), an Anthropic API key
-(only for discovery — replay runs without any model access).
+## Setup and run
 
-```bash
-cp .env.example .env      # fill in ANTHROPIC_API_KEY; CUA_USERNAME/CUA_PASSWORD stay operator/letmein
-dotnet build
-dotnet run --project src/Cua.Cli -- install-browsers   # one-time Playwright Chromium install
+Prerequisites:
+
+- .NET 9 SDK
+- Python 3.8+
+- an Anthropic API key for discovery only
+
+Create `.env` from the safe template:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-Start the target app (keep it running in a second terminal):
+Set these values in `.env`:
 
-```bash
+```dotenv
+ANTHROPIC_API_KEY=your-key
+CUA_MODEL=your-enabled-anthropic-model
+CUA_USERNAME=operator
+CUA_PASSWORD=letmein
+```
+
+`CUA_MODEL` is optional if the configured default is enabled for your account.
+Do not commit `.env`; it is ignored by Git.
+
+Build, test, and install Playwright Chromium:
+
+```powershell
+dotnet build Cua.sln
+dotnet test Cua.sln
+dotnet run --project src/Cua.Cli -- install-browsers
+```
+
+Start the target in a second terminal:
+
+```powershell
 python mock-legacy-bank/server.py
 ```
 
-Run the tests:
-
-```bash
-dotnet test
-```
+It listens at `http://127.0.0.1:8080/`.
 
 ## Demo path
 
-Environment for every command below: `ANTHROPIC_API_KEY` (discovery only),
-`CUA_USERNAME=operator`, `CUA_PASSWORD=letmein`.
+### 1. Run genuine LLM discovery
 
-**1. Discovery — the LLM records the capability (one real model run):**
+```powershell
+dotnet run --project src/Cua.Cli -- discover `
+  --goal "In Fee Management, look up the account and waive the assessed overdraft fee, reaching the reversal confirmation. Record a reusable capability. Use 12345 for the successful recorded flow, then probe 55555 for transient congestion, 99999 for a closed-account rejection, 77777 for no records, and 00000 for a manager-override modal; probe the blocking modal last." `
+  --id firstcore.fee_waiver `
+  --url http://127.0.0.1:8080/ `
+  --kind legacy_web `
+  --binding firstcore-legacy `
+  --vendor "FirstCore Banking Platform" `
+  --param account_id=12345 `
+  --headed `
+  --synthetic-evidence
+```
 
-```bash
-dotnet run --project src/Cua.Cli -- discover \
-  --goal "In Fee Management, look up the account and waive the assessed overdraft fee, reaching the reversal confirmation. Record the capability so an agent can waive a fee on any account. Test accounts you may probe to ground outcome conditions: 12345 healthy (use for the recorded flow), 55555 transient host congestion on first attempts, 99999 closed account (writes rejected), 77777 no records, 00000 restricted party whose waive triggers a blocking security modal - probe it last." \
-  --id firstcore.fee_waiver \
-  --url http://127.0.0.1:8080/ \
-  --vendor "FirstCore Banking Platform" \
-  --param account_id=12345 \
+This is a real model-driven observe/decide/act run against the live local UI.
+Probe actions ground exceptional-state declarations but are excluded from the
+compiled replay prefix. `--synthetic-evidence` permits raw screenshots only
+because this target contains fabricated data; omit it for real systems.
+
+The fresh run produced:
+
+- `capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json`
+- `evidence/discovery-20260910-035609-912-8c7a584c5ffe4a5b8520bb9ac09c15cd/`
+
+### 2. Review and approve
+
+Read the generated JSON, then explicitly approve it:
+
+```powershell
+dotnet run --project src/Cua.Cli -- approve `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json
+```
+
+Approval is required before an artifact containing an irreversible action can
+run unattended. Replay also requires explicit `--ack-risk`.
+
+### 3. Deterministic replay
+
+Success with extracted typed outputs:
+
+```powershell
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json `
+  --input account_id=12345 `
+  --ack-risk
+```
+
+Expected business outcome (`not_found`, not a crash):
+
+```powershell
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json `
+  --input account_id=77777 `
+  --ack-risk
+```
+
+Recoverable host congestion (declared backoff/retry, then success):
+
+```powershell
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json `
+  --input account_id=55555 `
+  --ack-risk
+```
+
+Closed-account business outcome:
+
+```powershell
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json `
+  --input account_id=99999 `
+  --ack-risk
+```
+
+No replay command invokes the LLM.
+
+### 4. Human escalation and control transfer
+
+Attended mode keeps the same headed browser session open. When the manager
+override appears, the operator enters mock PIN `7391`, clicks **Authorize**,
+then presses Enter in the terminal. Automation records the human action,
+reclaims control, resumes at the declared checkpoint, and verifies completion.
+
+```powershell
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json `
+  --input account_id=00000 `
+  --ack-risk `
   --headed
 ```
 
-The goal hands the model a tester's account matrix on purpose: after completing
-the recorded flow it **probes** the variant accounts (probe actions are excluded
-from the compiled flow) so every declared outcome condition is grounded in text
-it actually observed — see REPORT.md §3 for the failure mode this prevents.
+For a coordinator without access to process stdin, `--operator signal` holds
+the human control token until its advertised `.resume` file is created. This
+is the mode used by the committed attended evidence run; it recorded the
+operator's focus, masked PIN input, and Authorize click before handback:
 
-This emits a new **draft** artifact plus full evidence under
-`evidence/discovery-*/` (JSONL log, redacted model transcript, screenshots,
-the model's declaration). The repo ships two recordings from this command:
-`…firstcore-legacy.v1.json` is kept deliberately as the **failure exhibit**
-(ungrounded outcome conditions — REPORT §3), and `…firstcore-legacy.v2.json`
-is the probe-grounded, reviewed, approved artifact the demos below replay.
-
-**2. Review & approve** (a human reads the artifact, then):
-
-```bash
-dotnet run --project src/Cua.Cli -- approve --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json
+```powershell
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json `
+  --input account_id=00000 `
+  --ack-risk `
+  --headed `
+  --operator signal
 ```
 
-**3. Deterministic replay — the production path, no LLM:**
+Queue mode demonstrates asynchronous routing:
 
-```bash
-# happy path: fee waived, confirmation extracted
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
-  --input account_id=12345 --ack-risk
-
-# expected business outcome, not a crash: closed account → outcome=not_permitted
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
-  --input account_id=99999 --ack-risk
-
-# transient host congestion → declared retry policy → success
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
-  --input account_id=55555 --ack-risk
-
-# unknown account → outcome=not_found
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
-  --input account_id=77777 --ack-risk
+```powershell
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v1.json `
+  --input account_id=00000 `
+  --ack-risk `
+  --operator queue
 ```
 
-**4. Human-in-the-loop — security interception on the live session:**
+The queue adapter saves the intervention request, redacted current-state
+evidence, and resume intent, then returns `escalation_pending`. It does not
+claim to preserve a live browser after this local CLI process exits; a
+production remote-session broker is explicitly a next step.
 
-```bash
-# attended: the security modal triggers an escalation; YOU take over the live
-# browser window (enter manager PIN 7391, click Authorize), then press ENTER
-# in the terminal to hand control back; the run resumes and completes.
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
-  --input account_id=00000 --ack-risk --headed
+### 5. Replay the same capability on other surfaces
 
-# unattended: the same condition routes an intervention request (context,
-# screenshot, resume plan) to the operator queue and parks the run as
-# escalation_pending.
-dotnet run --project src/Cua.Cli -- replay --artifact capabilities/firstcore.fee_waiver.firstcore-legacy.v2.json \
-  --input account_id=00000 --ack-risk --operator queue
+Modern web uses the same typed business contract with semantic locators and no
+frames:
+
+```powershell
+python -m http.server 8090 --directory mock-modern-web
+
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-modern.v1.json `
+  --input account_id=12345 `
+  --ack-risk
 ```
 
-**5. The same capability on a second surface (desktop):**
+Native desktop uses Windows UI Automation. Automation IDs and accessible names
+replace browser selectors, while pane paths replace frame paths:
 
-```bash
+```powershell
 dotnet build mock-legacy-desktop/FirstCore.Desktop.csproj
 
-# same engine, same artifact vocabulary, native UIA adapter - no browser
-dotnet run --project src/Cua.Cli -- replay   --artifact capabilities/firstcore.fee_waiver.firstcore-desktop.v1.json   --input account_id=12345 --ack-risk          # success + RVSL- confirmation
-#  --input account_id=99999                    # business outcome: not_permitted
-#  --input account_id=55555                    # transient -> retry -> success
-#  --input account_id=00000 --operator queue   # escalation_pending
+dotnet run --project src/Cua.Cli -- replay `
+  --artifact capabilities/firstcore.fee_waiver.firstcore-desktop.v1.json `
+  --input account_id=12345 `
+  --ack-risk
 ```
 
-**6. The same capability on a modern web app (third binding):**
+These are separate surface bindings of `firstcore.fee_waiver`, not separate
+tenant recordings. Both were validated with successful model-free replays.
 
-```bash
-python -m http.server 8090 --directory mock-modern-web   # in another terminal
+## Agent-facing capability interface (optional stretch)
 
-dotnet run --project src/Cua.Cli -- replay   --artifact capabilities/firstcore.fee_waiver.firstcore-modern.v1.json   --input account_id=12345 --ack-risk
+Approved artifacts are exposed as typed MCP tools. Start the modern target,
+build the server, then run the demonstration client:
+
+```powershell
+python -m http.server 8090 --directory mock-modern-web
+
+dotnet build src/Cua.Mcp/Cua.Mcp.csproj
+python scripts/mcp_demo.py firstcore_fee_waiver__firstcore_modern 12345
 ```
 
-Same contract as the legacy and desktop bindings; the locator chain leans on
-`data-testid` and `aria-label` instead of generated ids.
+The client performs `initialize`, `tools/list`, `resources/list`, and
+`tools/call`. It first proves an irreversible invocation without
+`ack_risk=true` is refused, then invokes the approved capability with typed
+arguments and prints the structured result. Unknown and draft capabilities are
+also refused rather than guessed.
 
-**7. The catalog an AI agent would call:**
-
-```bash
-dotnet run --project src/Cua.Cli -- list
-```
-
-**8. …and the same catalog over MCP, invoked by an agent:**
-
-```bash
-# walks initialize -> tools/list -> resources/list -> tools/call
-python scripts/mcp_demo.py                                          # success
-python scripts/mcp_demo.py firstcore_fee_waiver__firstcore_modern 99999   # business outcome
-```
-
-Only **approved** artifacts become callable tools; drafts stay readable as
-resources for review. A business outcome comes back with `isError: false` —
-"account is closed" is an answer for the calling agent, not a failure. See
-[evidence/mcp-capability-interface/](evidence/mcp-capability-interface/).
-
-To wire it into an MCP client, run `src/Cua.Mcp/bin/Debug/net9.0-windows/cua-mcp.exe`
-with the repo as the working directory (`--capabilities` and `--evidence`
-override the defaults).
+Fresh redacted invocation evidence is in
+`evidence/mcp-20260910-044023-302-fde85e678a6044b4908cf9bdc641b256/`;
+the walkthrough is in `evidence/mcp-capability-interface/README.md`.
 
 ## Running without live services
 
-- **Replay never needs a model.** Only `discover` touches the Anthropic API.
-- The target app is local and dependency-free.
-- The unit tests exercise the replay engine's full semantics (retry, outcome
-  taxonomy, escalation, resume, guards) against a scripted fake surface — no
-  browser, no network: `dotnet test`.
-- `LATENCY_SCALE=0.2 python mock-legacy-bank/server.py` makes the mock app 5×
-  faster for iterating (leave it at 1.0 when producing evidence).
+Replay needs no model service. The test suite also needs no browser, API key,
+or network and exercises outcome classification, retries, policy blocks,
+redaction, artifact validation, and pause/resume semantics:
 
-## Notes
+```powershell
+dotnet test Cua.sln
+```
 
-- The mock app's credentials (`operator` / `letmein`) and all data are
-  fabricated; nothing here touches a real system.
-- Secrets never enter artifacts or logs: artifacts store a credentials *ref*
-  (`env://CUA`), resolved values are registered with the redactor, and
-  redaction is applied at the persistence boundary.
+The local target can run faster during development:
+
+```powershell
+$env:LATENCY_SCALE = "0.2"
+python mock-legacy-bank/server.py
+```
+
+Use the normal latency when producing submission evidence.
+
+## Safety and evidence notes
+
+- Navigation and action types are checked against configurable allowlists in
+  both discovery and replay.
+- Effective runtime risk can only be upgraded, never downgraded by an artifact.
+- Credentials remain environment references; resolved secrets are registered
+  with the redactor.
+- Sensitive inputs and extracted non-enum outputs are masked at the persistence
+  boundary. Typed values are returned to the immediate caller.
+- Raw screenshots are disabled by default. Failure observations and queued
+  intervention context use the stricter document redaction tier.
+- Evidence run IDs are unique, and hard failures report the failing step,
+  expected state, observed state, and evidence path.

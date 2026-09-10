@@ -22,6 +22,8 @@ public static class ArtifactCompiler
         public required IReadOnlyList<TraceStep> Trace { get; init; }
         public required JsonElement Declaration { get; init; }
         public required IReadOnlyList<string> AllowedHosts { get; init; }
+        public IReadOnlyList<StepAction> AllowedActions { get; init; } =
+            [StepAction.Navigate, StepAction.Click, StepAction.Type, StepAction.Select, StepAction.Read, StepAction.Checkpoint];
         public required string RunId { get; init; }
         public required int NextVersion { get; init; }
     }
@@ -62,7 +64,7 @@ public static class ArtifactCompiler
         var outputs = ParseOutputs(decl);
         var extractPatterns = ExtractRegexes(decl);
 
-        return new CapabilityArtifact
+        var artifact = new CapabilityArtifact
         {
             CapabilityId = input.Config.CapabilityId,
             CapabilityVersion = input.NextVersion,
@@ -76,6 +78,7 @@ public static class ArtifactCompiler
                 AppBinding = input.Config.AppBinding,
                 EntryUrl = input.Config.EntryUrl,
                 Allowlist = [.. input.AllowedHosts],
+                AllowedActions = [.. input.AllowedActions],
             },
             Inputs = inputs,
             Outputs = outputs,
@@ -91,6 +94,8 @@ public static class ArtifactCompiler
                 Approval = "draft",
             },
         };
+        ArtifactValidator.Validate(artifact);
+        return artifact;
     }
 
     // ------------------------------------------------------------------ steps
@@ -226,7 +231,12 @@ public static class ArtifactCompiler
         if (meta?.Name is { Length: > 0 } name)
             candidates.Add(new Locator { By = LocatorKind.Css, Value = $"{meta.Tag}[name='{name}']" });
         if (kind == SurfaceKind.Web && meta is { Role.Length: > 0, Text.Length: > 0 and <= 40 })
-            candidates.Add(new Locator { By = LocatorKind.Css, Value = $"[role='{meta.Role}']", Within = null });
+            candidates.Add(new Locator
+            {
+                By = LocatorKind.Text,
+                Value = meta.Text,
+                Within = $"[role='{meta.Role}']",
+            });
         if (t.Action == StepAction.Click && meta?.Text is { Length: > 0 and <= 40 } text)
         {
             var within = meta.Classes?.Split(' ', StringSplitOptions.RemoveEmptyEntries) is [var first, ..]

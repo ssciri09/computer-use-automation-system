@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "capability_id": "firstcore.fee_waiver",
+  "capability_version": 1,
+  "run_id": "replay-20260910-042141-875-077ad5c195294f548f31a7ef2fdf169e",
+  "outputs": {
+    "account_name": "▮▮REDACTED▮▮",
+    "confirmation_message": "Fee ▮▮REDACTED▮▮ reversed. Credit of ▮▮REDACTED▮▮ posted. Confirmation ▮▮REDACTED▮▮",
+    "outcome": "waived",
+    "confirmation_number": "▮▮REDACTED▮▮",
+    "fee_ref": "▮▮REDACTED▮▮",
+    "amount": "▮▮REDACTED▮▮"
+  },
+  "outcome": "waived",
+  "human_assisted": false,
+  "evidence_dir": "evidence\\replay-20260910-042141-875-077ad5c195294f548f31a7ef2fdf169e",
+  "started_at": "2026-09-10T04:21:44.4257997+00:00",
+  "ended_at": "2026-09-10T04:21:50.6268373+00:00",
+  "duration_ms": 6201
+}

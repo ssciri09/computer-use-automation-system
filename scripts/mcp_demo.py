@@ -104,11 +104,19 @@ def main():
         for resource in client.call("resources/list")["resources"]:
             print(f"  {resource['uri']}\n      {resource['name']} - {resource['description']}")
 
-        rule(f"4. tools/call - invoking {tool_name}(account_id={account_id})")
+        rule("4. tools/call - irreversible capability without acknowledgement is refused")
+        refused_risk = client.call("tools/call", {
+            "name": tool_name,
+            "arguments": {"account_id": account_id},
+        })
+        print(refused_risk["content"][0]["text"])
+        print(f"isError: {refused_risk.get('isError')}")
+
+        rule(f"5. tools/call - invoking {tool_name}(account_id={account_id}, ack_risk=true)")
         print("(this replays the recorded artifact against the live app; no model in the loop)\n")
         result = client.call("tools/call", {
             "name": tool_name,
-            "arguments": {"account_id": account_id},
+            "arguments": {"account_id": account_id, "ack_risk": True},
         })
         content = result.get("content", [])
         print(content[0]["text"] if content else "(no content)")
@@ -117,7 +125,7 @@ def main():
             print(json.dumps(json.loads(content[1]["text"]), indent=2))
         print(f"\nisError: {result.get('isError')}")
 
-        rule("5. tools/call - an uncatalogued capability is refused, not guessed")
+        rule("6. tools/call - an uncatalogued capability is refused, not guessed")
         refused = client.call("tools/call", {
             "name": "firstcore_wire_transfer",
             "arguments": {"amount": "100000"},

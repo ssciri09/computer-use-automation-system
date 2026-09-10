@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Cua.Core.Artifacts;
+using Cua.Core.Evidence;
+using Cua.Core.Hitl;
 using Cua.Core.Policy;
 using Cua.Core.Redaction;
 using Cua.Engine.Discovery;
@@ -22,6 +24,18 @@ public sealed class RedactorTests
     }
 
     [Fact]
+    public void LiteralRedaction_DoesNotCorruptStructuredFieldNames()
+    {
+        var r = Redactor.CreateDefault();
+        r.AddLiteral("operator");
+
+        var output = r.Apply("""{"operator_notes":"completed by operator"}""");
+
+        Assert.Contains("\"operator_notes\"", output);
+        Assert.DoesNotContain("completed by operator", output);
+    }
+
+    [Fact]
     public void MasksAddedPatterns_LeavesOtherTextIntact()
     {
         var r = Redactor.CreateDefault();
@@ -29,6 +43,18 @@ public sealed class RedactorTests
         var output = r.Apply("account 12345 balance 1,284.09");
         Assert.DoesNotContain("12345", output);
         Assert.Contains("1,284.09", output);
+    }
+
+    [Fact]
+    public void MasksCompleteMatch_WhenPatternContainsCaptureGroup()
+    {
+        var r = Redactor.CreateDefault();
+        r.AddPattern(@"Confirmation (RVSL-[A-Z0-9]+)");
+
+        var output = r.Apply("Confirmation RVSL-SECRET42");
+
+        Assert.DoesNotContain("RVSL-SECRET42", output);
+        Assert.Contains(Redactor.Mask, output);
     }
 }
 
@@ -47,6 +73,45 @@ public sealed class RedactorDocumentTests
         Assert.DoesNotContain("88220", doc);
         // short numbers (amounts, dates) survive
         Assert.Contains("30.00", doc);
+    }
+}
+
+public sealed class SignalFileOperatorChannelTests
+{
+    [Fact]
+    public async Task HoldsHumanControl_UntilExternalResumeSignal()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cua-signal-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var control = new SessionControl();
+            var channel = new SignalFileOperatorChannel(dir);
+            var request = new InterventionRequest
+            {
+                RunId = "run-1",
+                CapabilityId = "cap-1",
+                Goal = "test",
+                StepId = "s2",
+                Reason = "operator required",
+            };
+
+            var pending = channel.RequestInterventionAsync(request, control, CancellationToken.None);
+            await Task.Delay(100);
+            Assert.Equal(ControlHolder.Human, control.Holder);
+            Assert.False(pending.IsCompleted);
+
+            await File.WriteAllTextAsync(
+                Path.Combine(dir, "intervention-run-1-s2.resume"), "completed manually");
+            var resolution = await pending;
+
+            Assert.True(resolution.Resolved);
+            Assert.Equal("completed manually", resolution.OperatorNotes);
+            Assert.Equal(ControlHolder.Automation, control.Holder);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
     }
 }
 
@@ -196,6 +261,78 @@ public sealed class ArtifactJsonTests
     }
 }
 
+public sealed class ArtifactValidationTests
+{
+    [Fact]
+    public void RejectsDanglingEscalationResumeTarget()
+    {
+        var artifact = new CapabilityArtifact
+        {
+            CapabilityId = "test",
+            CapabilityVersion = 1,
+            DisplayName = "test",
+            Surface = new SurfaceInfo { EntryUrl = "http://x/", Allowlist = ["x"] },
+            Steps =
+            [
+                new StepDef
+                {
+                    Id = "s1",
+                    Action = StepAction.Checkpoint,
+                    Assertions =
+                    [
+                        new AssertionDef
+                        {
+                            Classify = AssertionClass.Escalate,
+                            When = new ConditionDef { By = ConditionKind.TextContains, Value = "blocked" },
+                            Escalate = new EscalationSpec { Reason = "blocked", ResumeAt = "missing" },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        var error = Assert.Throws<InvalidOperationException>(() => ArtifactValidator.Validate(artifact));
+        Assert.Contains("unknown step 'missing'", error.Message);
+    }
+
+    [Fact]
+    public void RawScreenshots_AreDisabledByDefault()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cua-evidence-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var log = new RunLogger(dir, "test", Redactor.CreateDefault()) { Quiet = true };
+            var path = log.SaveScreenshot([1, 2, 3], "screen");
+
+            Assert.Null(path);
+            Assert.Empty(Directory.GetFiles(log.Dir, "*.png"));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void EvidenceText_PreservesMetadata_WhileDocumentsMaskBystanderIds()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cua-evidence-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var log = new RunLogger(dir, "test", Redactor.CreateDefault()) { Quiet = true };
+            var resultPath = log.SaveText("result.json", """{"run_id":"replay-20260910","status":"success"}""");
+            var screenPath = log.SaveDocument("screen.txt", "account 40219");
+
+            Assert.Contains("replay-20260910", File.ReadAllText(resultPath));
+            Assert.DoesNotContain("40219", File.ReadAllText(screenPath));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
+    }
+}
+
 public sealed class ArtifactCompilerTests
 {
     private static DiscoveryConfig Config => new()
@@ -215,6 +352,7 @@ public sealed class ArtifactCompilerTests
         outputs = new object[]
         {
             new { name = "outcome", type = "enum", enum_values = new[] { "waived", "not_found" } },
+            new { name = "confirmation_id", type = "string", enum_values = (string[]?)null },
         },
         checkpoint = new
         {

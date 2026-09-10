@@ -3,6 +3,7 @@ using Cua.Core.Artifacts;
 using Cua.Core.Contracts;
 using Cua.Core.Evidence;
 using Cua.Core.Hitl;
+using Cua.Core.Policy;
 using Cua.Core.Redaction;
 using Cua.Core.Surface;
 using Cua.Engine.Common;
@@ -28,6 +29,7 @@ public sealed record ReplayOptions
 /// </summary>
 public sealed class ReplayEngine(
     ISurface surface,
+    PolicyGate policy,
     IOperatorChannel operatorChannel,
     RunLogger log,
     Redactor redactor)
@@ -41,6 +43,7 @@ public sealed class ReplayEngine(
     private bool _humanAssisted;
     private bool _authRecovered;
     private DateTimeOffset _startedAt;
+    private ReplayOptions _options = new();
     private int _runs;
 
     public async Task<ReplayResult> RunAsync(
@@ -53,11 +56,13 @@ public sealed class ReplayEngine(
                 "lives on the instance — construct a new engine per run");
         _artifact = artifact;
         _inputs = inputs;
+        _options = options;
         _startedAt = DateTimeOffset.UtcNow;
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
         cts.CancelAfter(options.MaxRunTime);
         var ct = cts.Token;
 
+        ArtifactValidator.Validate(artifact);
         ValidateInputs(artifact, inputs);
         if (artifact.Provenance.Approval != "approved" && !options.AllowDraft)
             throw new InvalidOperationException(
@@ -74,6 +79,10 @@ public sealed class ReplayEngine(
 
         try
         {
+            var navigation = policy.CheckNavigation(artifact.Surface.EntryUrl);
+            if (navigation.IsBlocked)
+                throw await HardAsync("(navigation)", "entry target to be inside the replay allowlist",
+                    navigation.Reason ?? "entry target blocked by policy", ct);
             await surface.NavigateAsync(artifact.Surface.EntryUrl, ct);
 
             var steps = artifact.Steps;
@@ -83,8 +92,6 @@ public sealed class ReplayEngine(
                 var step = steps[i];
                 if (step.Phase != "auth")
                     await CheckGuardsAsync(step, ct);
-
-                await ConfirmRiskIfNeededAsync(step, artifact, options, ct);
 
                 var jumpTo = await ExecuteStepAsync(step, ct);
                 if (jumpTo is not null)
@@ -97,6 +104,14 @@ public sealed class ReplayEngine(
                 i++;
             }
 
+            var missingOutputs = artifact.Outputs
+                .Where(o => o.Required && !_outputs.ContainsKey(o.Name))
+                .Select(o => o.Name)
+                .ToList();
+            if (missingOutputs.Count > 0)
+                return await HardFailureAsync("(outputs)",
+                    $"required outputs [{string.Join(", ", missingOutputs)}] to be produced",
+                    "checkpoint matched but required outputs were missing", ct);
             return Finish(RunStatus.Success);
         }
         catch (RunAborted a)
@@ -107,6 +122,11 @@ public sealed class ReplayEngine(
         {
             return await HardFailureAsync("(run)", "run to finish within limits",
                 "run timed out or was cancelled", CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            return await HardFailureAsync("(runtime)", "surface operation to complete",
+                $"{ex.GetType().Name}: {ex.Message}", CancellationToken.None);
         }
     }
 
@@ -119,7 +139,7 @@ public sealed class ReplayEngine(
 
         for (var attempt = 0; ; attempt++)
         {
-            await PerformActionAsync(step, ct);
+            var effectiveRisk = await PerformActionAsync(step, ct);
 
             if (step.WaitAfter is { } wait)
             {
@@ -139,7 +159,7 @@ public sealed class ReplayEngine(
                 return null;
             }
 
-            var (verdict, jump) = await EvaluateAssertionsAsync(step, attempt, ct);
+            var (verdict, jump) = await EvaluateAssertionsAsync(step, effectiveRisk, attempt, ct);
             switch (verdict)
             {
                 case StepVerdict.Proceed:
@@ -157,11 +177,13 @@ public sealed class ReplayEngine(
     private enum StepVerdict { Proceed, RetryStep }
 
     private async Task<(StepVerdict, string?)> EvaluateAssertionsAsync(
-        StepDef step, int attempt, CancellationToken ct)
+        StepDef step, RiskLevel effectiveRisk, int attempt, CancellationToken ct)
     {
         var deadline = DateTime.UtcNow.AddMilliseconds(Math.Max(step.TimeoutMs, 10_000));
         while (true)
         {
+            if (step.Phase != "auth")
+                await CheckGuardsAsync(step, ct);
             foreach (var assertion in step.Assertions)
             {
                 if (!await surface.IsConditionMetAsync(assertion.When, step.Frame, ct)) continue;
@@ -178,7 +200,7 @@ public sealed class ReplayEngine(
                 {
                     case AssertionClass.Recoverable:
                     {
-                        if (step.Risk == RiskLevel.Irreversible)
+                        if (effectiveRisk == RiskLevel.Irreversible)
                         {
                             // A transient AFTER an irreversible action is ambiguous:
                             // the write may or may not have posted. Re-executing
@@ -243,18 +265,26 @@ public sealed class ReplayEngine(
         }
     }
 
-    private async Task PerformActionAsync(StepDef step, CancellationToken ct)
+    private async Task<RiskLevel> PerformActionAsync(StepDef step, CancellationToken ct)
     {
         surface.Control.AssertAutomationHasControl();
         switch (step.Action)
         {
             case StepAction.Navigate:
-                await surface.NavigateAsync(step.Url ?? _artifact.Surface.EntryUrl, ct);
-                return;
+            {
+                var url = step.Url ?? _artifact.Surface.EntryUrl;
+                var navigation = policy.CheckNavigation(url);
+                if (navigation.IsBlocked)
+                    throw await HardAsync(step.Id, "navigation target to be inside the replay allowlist",
+                        navigation.Reason ?? "navigation blocked by policy", ct);
+                await surface.NavigateAsync(url, ct);
+                return RiskLevel.Safe;
+            }
 
             case StepAction.Checkpoint:
                 // no interaction: assertions + extracts do the verification
-                return;
+                await EnforceActionPolicyAsync(step, null, ct);
+                return RiskLevel.Safe;
 
             case StepAction.Click:
             case StepAction.Type:
@@ -262,6 +292,8 @@ public sealed class ReplayEngine(
             case StepAction.Read:
             {
                 var target = await ResolveOrFailAsync(step, ct);
+                var effectiveRisk = await EnforceActionPolicyAsync(step, target.Meta.Text, ct);
+                await ConfirmRiskIfNeededAsync(step, effectiveRisk, _artifact, _options, ct);
                 switch (step.Action)
                 {
                     case StepAction.Click:
@@ -278,9 +310,29 @@ public sealed class ReplayEngine(
                         if (step.ReadInto is not null) _outputs[step.ReadInto] = text;
                         break;
                 }
-                return;
+                return effectiveRisk;
             }
         }
+        throw new InvalidOperationException($"unsupported action '{step.Action}'");
+    }
+
+    private async Task<RiskLevel> EnforceActionPolicyAsync(
+        StepDef step, string? targetText, CancellationToken ct)
+    {
+        var decision = policy.CheckAction(
+            step.Action, await surface.CurrentUrlAsync(), step.Risk, targetText);
+        if (decision.IsBlocked)
+            throw await HardAsync(step.Id, $"policy to permit {step.Action}",
+                decision.Reason ?? "action blocked by policy", ct);
+        log.Log("policy_allowed", new
+        {
+            step = step.Id,
+            action = step.Action,
+            declared_risk = step.Risk,
+            effective_risk = decision.EffectiveRisk,
+            verdict = decision.Verdict,
+        }, echo: false);
+        return decision.EffectiveRisk;
     }
 
     private async Task<IResolvedTarget> ResolveOrFailAsync(StepDef step, CancellationToken ct)
@@ -359,9 +411,9 @@ public sealed class ReplayEngine(
     // -------------------------------------------------------------- escalation
 
     private async Task ConfirmRiskIfNeededAsync(
-        StepDef step, CapabilityArtifact artifact, ReplayOptions options, CancellationToken ct)
+        StepDef step, RiskLevel effectiveRisk, CapabilityArtifact artifact, ReplayOptions options, CancellationToken ct)
     {
-        if (step.Risk != RiskLevel.Irreversible) return;
+        if (effectiveRisk != RiskLevel.Irreversible) return;
         if (options.AckRisk && artifact.Provenance.Approval == "approved")
         {
             log.Log("risk_flagged", new { step = step.Id, note = "irreversible step executed under approved artifact + --ack-risk" });
@@ -515,7 +567,7 @@ public sealed class ReplayEngine(
                 .Take(8);
             var digest = string.Join(" ;; ", messages);
             if (digest.Length > 0) observedDetail = $"{observed} — on-screen: {digest}";
-            log.SaveText($"failure-{stepId}-observation.txt", obs.ToPromptText(8000));
+            log.SaveDocument($"failure-{stepId}-observation.txt", obs.ToPromptText(8000));
         }
         catch { /* evidence capture is best-effort on a broken surface */ }
 
@@ -523,7 +575,7 @@ public sealed class ReplayEngine(
         {
             StepId = stepId,
             Expected = expected,
-            Observed = observedDetail,
+            Observed = redactor.ApplyToDocument(observedDetail),
             ScreenshotPath = shotPath,
         };
         log.Log("hard_failure", failure);

@@ -1,0 +1,164 @@
+{
+  "display_name": "FirstCore \u2014 Waive assessed overdraft fee (Fee Management)",
+  "description": "Signs on to the FirstCore portal, acknowledges the authorized-user notice, opens Account Servicing \u00BB Fee Management, runs an account inquiry for the supplied account_id, and waives the assessed OVERDRAFT ITEM FEE, returning the host reversal confirmation number. Classifies no-record, closed-account, host-congestion and manager-override outcomes.",
+  "outputs": [
+    {
+      "name": "confirmation_message",
+      "type": "string"
+    },
+    {
+      "name": "confirmation_number",
+      "type": "string"
+    },
+    {
+      "name": "fee_ref",
+      "type": "string"
+    },
+    {
+      "name": "amount",
+      "type": "string"
+    },
+    {
+      "name": "outcome",
+      "type": "enum",
+      "enum_values": [
+        "waived",
+        "not_found",
+        "account_closed"
+      ]
+    }
+  ],
+  "auth_steps": [
+    "s1",
+    "s2",
+    "s3",
+    "s4"
+  ],
+  "checkpoint": {
+    "frame_path": [
+      "wrkFrm",
+      "modFrm"
+    ],
+    "by": "text_contains",
+    "value": "Confirmation RVSL-",
+    "emit": {
+      "outcome": "waived"
+    },
+    "extracts": [
+      {
+        "name": "confirmation_number",
+        "regex": "Confirmation (RVSL-[A-Z0-9]\u002B)"
+      },
+      {
+        "name": "fee_ref",
+        "regex": "Fee (FEE-\\d\u002B) reversed"
+      },
+      {
+        "name": "amount",
+        "regex": "Credit of ([\\d,]\u002B\\.\\d{2}) posted"
+      },
+      {
+        "name": "confirmation_message",
+        "regex": "(Fee FEE-\\d\u002B reversed\\.[^\\n]*)"
+      }
+    ]
+  },
+  "guarded_steps": [
+    {
+      "after_step": "s7",
+      "success_when": {
+        "frame_path": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "by": "text_contains",
+        "value": "Fee Management \u2014 Account Inquiry"
+      }
+    },
+    {
+      "after_step": "s9",
+      "success_when": {
+        "frame_path": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "by": "text_contains",
+        "value": "Assessed Fees"
+      },
+      "business_outcomes": [
+        {
+          "when": {
+            "frame_path": [
+              "wrkFrm",
+              "modFrm"
+            ],
+            "by": "text_contains",
+            "value": "No records found for the supplied account identifier."
+          },
+          "emit": {
+            "outcome": "not_found"
+          },
+          "note": "Inquiry returned no account/fee records; terminal business answer."
+        }
+      ],
+      "recoverable": [
+        {
+          "when": {
+            "frame_path": [
+              "wrkFrm",
+              "modFrm"
+            ],
+            "by": "text_contains",
+            "value": "HOST-0521: Legacy host link congested. Resubmit inquiry."
+          },
+          "max_attempts": 4,
+          "backoff_ms": [
+            2000,
+            5000,
+            ▮▮REDACTED▮▮
+          ],
+          "note": "Transient legacy host congestion \u2014 re-click Execute Inquiry."
+        }
+      ]
+    },
+    {
+      "after_step": "s10",
+      "success_when": {
+        "frame_path": [
+          "wrkFrm",
+          "modFrm"
+        ],
+        "by": "text_contains",
+        "value": "Confirmation RVSL-"
+      },
+      "business_outcomes": [
+        {
+          "when": {
+            "frame_path": [
+              "wrkFrm",
+              "modFrm"
+            ],
+            "by": "text_contains",
+            "value": "Error: Account is closed. Fee waiver not permitted."
+          },
+          "emit": {
+            "outcome": "account_closed"
+          },
+          "note": "Host rejected the reversal because the account is CLOSED; no waiver posted."
+        }
+      ],
+      "escalate": [
+        {
+          "when": {
+            "frame_path": [],
+            "by": "text_contains",
+            "value": "SECURITY INTERCEPTION: Manager Override PIN Required"
+          },
+          "reason": "Host demands a Manager Override PIN before posting the reversal; modal is injected into the TOP document (fields #ext-gen99_pin, Authorize #ext-gen101). A human with override authority must supply the PIN.",
+          "resume_at": "checkpoint"
+        }
+      ]
+    }
+  ],
+  "robustness_notes": "Flow: top-frame login (name-based locators j_username/j_password are stable; the Sign On / I Acknowledge controls only have generated ids ext-gen21/ext-gen33 and should fall back to visible text \u0022Sign On\u0022 / \u0022I Acknowledge\u0022). Nav tree lives in navFrm: the \u0022Account Servicing\u0022 group must be EXPANDED first \u2014 clicking the group label div did nothing; clicking the \u0022\u002B\u0022/\u0022-\u0022 toggle span (#ext-gen89) toggles it, after which the child \u0022\u00B7Fee Management\u0022 item becomes clickable. All ext-genNN ids are generated and may churn across releases/tenants; prefer visible text fallbacks (\u0022- Account Servicing\u0022, \u0022\u00B7Fee Management\u0022, \u0022Execute Inquiry\u0022, \u0022Waive Fee\u0022). The module UI is in the nested frame wrkFrm\u003EmodFrm; the account field is best located by name attribute input[name=\u0027acctNbr\u0027]. Busy indicator is #loading-spinner inside modFrm and shows two different captions (\u0022Legacy host communication in progress...\u0022 for inquiry, \u0022Posting reversal to host...\u0022 for the waiver) \u2014 always wait for it to be absent before evaluating outcomes. IMPORTANT: the manager-override security modal escapes the nested frames and is injected into the TOP document, so it must be detected with frame_path []. Result/status text is matched on stable host wording (HOST-0521 code, \u0022No records found...\u0022, \u0022Error: Account is closed...\u0022, \u0022Confirmation RVSL-\u0022) rather than on generated element ids."
+}

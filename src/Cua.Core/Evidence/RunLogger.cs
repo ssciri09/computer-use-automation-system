@@ -11,6 +11,7 @@ public sealed class RunLogger : IDisposable
 {
     private readonly StreamWriter _log;
     private readonly Redactor _redactor;
+    private readonly bool _persistRawScreenshots;
     private readonly object _lock = new();
     private int _shotIndex;
 
@@ -18,12 +19,15 @@ public sealed class RunLogger : IDisposable
     public string Dir { get; }
     public bool Quiet { get; set; }
 
-    public RunLogger(string evidenceRoot, string runKind, Redactor redactor, string? runId = null)
+    public RunLogger(
+        string evidenceRoot, string runKind, Redactor redactor,
+        string? runId = null, bool persistRawScreenshots = false)
     {
-        RunId = runId ?? $"{runKind}-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
+        RunId = runId ?? $"{runKind}-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}";
         Dir = Path.Combine(evidenceRoot, RunId);
         Directory.CreateDirectory(Dir);
         _redactor = redactor;
+        _persistRawScreenshots = persistRawScreenshots;
         _log = new StreamWriter(Path.Combine(Dir, "log.jsonl"), append: false) { AutoFlush = true };
     }
 
@@ -45,8 +49,18 @@ public sealed class RunLogger : IDisposable
         }
     }
 
-    public string SaveScreenshot(byte[] png, string label)
+    /// <summary>
+    /// Raw pixels cannot be safely pattern-redacted. They are therefore
+    /// disabled by default and may only be persisted for explicitly synthetic
+    /// demo data. Production evidence uses the redacted observation dump.
+    /// </summary>
+    public string? SaveScreenshot(byte[] png, string label)
     {
+        if (!_persistRawScreenshots)
+        {
+            Log("screenshot_skipped", new { label, reason = "raw screenshots disabled by evidence policy" }, echo: false);
+            return null;
+        }
         var name = $"{Interlocked.Increment(ref _shotIndex):D2}-{Sanitize(label)}.png";
         var path = Path.Combine(Dir, name);
         File.WriteAllBytes(path, png);
@@ -56,8 +70,17 @@ public sealed class RunLogger : IDisposable
 
     public string SaveText(string fileName, string content)
     {
-        // Saved documents are captured screen content or result copies —
-        // they get the stricter document tier (bystander digit masking).
+        var path = Path.Combine(Dir, fileName);
+        File.WriteAllText(path, _redactor.Apply(content));
+        return path;
+    }
+
+    /// <summary>
+    /// Persists captured screen/document content with bystander protection in
+    /// addition to normal secret and run-specific redaction.
+    /// </summary>
+    public string SaveDocument(string fileName, string content)
+    {
         var path = Path.Combine(Dir, fileName);
         File.WriteAllText(path, _redactor.ApplyToDocument(content));
         return path;
@@ -66,7 +89,7 @@ public sealed class RunLogger : IDisposable
     /// <summary>Append one redacted JSONL record to a named auxiliary stream (e.g. transcript, human actions).</summary>
     public void AppendJsonl(string fileName, object payload)
     {
-        var line = _redactor.Apply(CuaJson.SerializeCompact(payload));
+        var line = _redactor.ApplyToDocument(CuaJson.SerializeCompact(payload));
         lock (_lock) File.AppendAllText(Path.Combine(Dir, fileName), line + Environment.NewLine);
     }
 

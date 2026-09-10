@@ -23,6 +23,7 @@ public sealed class DesktopSurface : ISurface
     private Application? _app;
     private AutomationElement? _root;
     private string _identity = "desktop";
+    private bool _ownsApplication;
 
     public SessionControl Control { get; } = new();
 
@@ -35,6 +36,7 @@ public sealed class DesktopSurface : ISurface
         _identity = target.Identity;
         _app?.Dispose();
         _app = null;
+        _ownsApplication = false;
 
         if (target.ProcessId is { } pid)
         {
@@ -46,6 +48,7 @@ public sealed class DesktopSurface : ISurface
             _app = string.IsNullOrWhiteSpace(target.Arguments)
                 ? Application.Launch(target.Executable)
                 : Application.Launch(target.Executable, target.Arguments);
+            _ownsApplication = true;
             _root = _app.GetMainWindow(_automation, TimeSpan.FromSeconds(20));
         }
         else
@@ -76,17 +79,25 @@ public sealed class DesktopSurface : ISurface
         return Task.FromResult(new SurfaceObservation { Url = $"app://{_identity}", Frames = frames });
     }
 
-    public Task<IResolvedTarget?> ResolveAsync(TargetRef target, CancellationToken ct)
+    public async Task<IResolvedTarget?> ResolveAsync(TargetRef target, CancellationToken ct)
     {
-        var scope = Scope(target.Frame);
-        if (scope is null) return Task.FromResult<IResolvedTarget?>(null);
-
-        for (var i = 0; i < target.Locator.Candidates.Count; i++)
+        Control.AssertAutomationHasControl();
+        var deadline = DateTime.UtcNow.AddMilliseconds(target.TimeoutMs);
+        while (true)
         {
-            var hit = TryCandidate(scope, target.Locator.Candidates[i], i);
-            if (hit is not null) return Task.FromResult<IResolvedTarget?>(hit);
+            ct.ThrowIfCancellationRequested();
+            var scope = Scope(target.Frame);
+            if (scope is not null)
+            {
+                for (var i = 0; i < target.Locator.Candidates.Count; i++)
+                {
+                    var hit = TryCandidate(scope, target.Locator.Candidates[i], i);
+                    if (hit is not null) return hit;
+                }
+            }
+            if (DateTime.UtcNow >= deadline) return null;
+            await Task.Delay(150, ct);
         }
-        return Task.FromResult<IResolvedTarget?>(null);
     }
 
     public Task ClickAsync(IResolvedTarget target, CancellationToken ct)
@@ -100,7 +111,13 @@ public sealed class DesktopSurface : ISurface
             Mouse.Click(new System.Drawing.Point((int)x, (int)y));
             return Task.CompletedTask;
         }
-        el.Click();
+        // Prefer UIA Invoke for buttons and menu items. It does not depend on
+        // foreground focus or screen coordinates; physical click remains the
+        // fallback for controls that expose no invoke pattern.
+        if (el.Patterns.Invoke.IsSupported)
+            el.Patterns.Invoke.Pattern.Invoke();
+        else
+            el.Click();
         return Task.CompletedTask;
     }
 
@@ -197,7 +214,8 @@ public sealed class DesktopSurface : ISurface
     public ValueTask DisposeAsync()
     {
         // Close what we launched; a leaked window steals focus from the next run.
-        try { _app?.Close(); } catch { /* already gone */ }
+        if (_ownsApplication)
+            try { _app?.Close(); } catch { /* already gone */ }
         _automation.Dispose();
         _app?.Dispose();
         return ValueTask.CompletedTask;
@@ -236,10 +254,10 @@ public sealed class DesktopSurface : ISurface
                     return new DesktopTarget(null, index, $"coords({q.Value})", x, y);
                 case DesktopQueryKind.AutomationId:
                     var byId = scope.FindFirstDescendant(cf => cf.ByAutomationId(q.Value));
-                    return byId is null ? null : Wrap(byId, index);
+                    return byId is null ? null : Wrap(byId, scope, index);
                 case DesktopQueryKind.Name:
                     var byName = scope.FindFirstDescendant(cf => cf.ByName(q.Value));
-                    return byName is null ? null : Wrap(byName, index);
+                    return byName is null ? null : Wrap(byName, scope, index);
             }
         }
         catch (Exception)
@@ -249,9 +267,10 @@ public sealed class DesktopSurface : ISurface
         return null;
     }
 
-    private static DesktopTarget Wrap(AutomationElement el, int index)
+    private static DesktopTarget Wrap(AutomationElement el, AutomationElement scope, int index)
     {
         var r = el.BoundingRectangle;
+        var origin = scope.BoundingRectangle;
         return new DesktopTarget(el, index, $"{el.ControlType}:{NameOf(el)}", r.X + r.Width / 2.0, r.Y + r.Height / 2.0)
         {
             Meta = new ElementMeta
@@ -260,8 +279,8 @@ public sealed class DesktopSurface : ISurface
                 Name = el.Name,
                 Tag = el.ControlType.ToString(),
                 Text = NameOf(el),
-                X = r.X + r.Width / 2.0,
-                Y = r.Y + r.Height / 2.0,
+                X = r.X + r.Width / 2.0 - origin.X,
+                Y = r.Y + r.Height / 2.0 - origin.Y,
             },
         };
     }

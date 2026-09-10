@@ -19,6 +19,14 @@
     "allowlist": [
       "FirstCore.Desktop"
     ],
+    "allowed_actions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "read",
+      "checkpoint"
+    ],
     "app_binding": "firstcore-desktop"
   },
   "inputs": [
@@ -37,7 +45,7 @@
       "type": "enum",
       "enum_values": [
         "waived",
-        "not_permitted",
+        "account_closed",
         "not_found"
       ],
       "required": false
@@ -48,7 +56,17 @@
       "required": false
     },
     {
+      "name": "confirmation_message",
+      "type": "string",
+      "required": false
+    },
+    {
       "name": "fee_ref",
+      "type": "string",
+      "required": false
+    },
+    {
+      "name": "amount",
       "type": "string",
       "required": false
     }
@@ -394,7 +412,7 @@
             "value": "Account is closed"
           },
           "emit": {
-            "outcome": "not_permitted"
+            "outcome": "account_closed"
           },
           "terminal": true
         },
@@ -426,6 +444,34 @@
       "note": "posts the reversal to the host \u2014 cannot be undone"
     },
     {
+      "id": "s10",
+      "action": "read",
+      "phase": "main",
+      "frame": [
+        "WorkspacePane",
+        "FeeModulePane"
+      ],
+      "locator": {
+        "candidates": [
+          {
+            "by": "css",
+            "value": "#lblWaiveResult"
+          },
+          {
+            "by": "text",
+            "value": "Confirmation"
+          }
+        ],
+        "robustness": "AutomationId first; stable confirmation wording is the UIA Name fallback"
+      },
+      "clear_first": true,
+      "risk": "safe",
+      "read_into": "confirmation_message",
+      "assertions": [],
+      "extracts": [],
+      "timeout_ms": 15000
+    },
+    {
       "id": "checkpoint",
       "action": "checkpoint",
       "phase": "main",
@@ -452,6 +498,18 @@
         {
           "name": "confirmation_number",
           "regex": "RVSL-[A-F0-9]{8}"
+        },
+        {
+          "name": "fee_ref",
+          "regex": "Fee (FEE-\\d+) reversed"
+        },
+        {
+          "name": "amount",
+          "regex": "Credit of ([\\d,]+\\.\\d{2}) posted"
+        },
+        {
+          "name": "confirmation_message",
+          "regex": "(Fee FEE-\\d+ reversed\\.[^\\n]*)"
         }
       ],
       "timeout_ms": 30000,
@@ -460,7 +518,10 @@
   ],
   "redaction": {
     "log_patterns": [
-      "RVSL-[A-F0-9]{8}"
+      "RVSL-[A-F0-9]{8}",
+      "Fee (FEE-\\d+) reversed",
+      "Credit of ([\\d,]+\\.\\d{2}) posted",
+      "(Fee FEE-\\d+ reversed\\.[^\\n]*)"
     ]
   },
   "provenance": {

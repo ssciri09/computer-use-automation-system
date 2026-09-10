@@ -2,6 +2,7 @@ using Cua.Core.Artifacts;
 using Cua.Core.Contracts;
 using Cua.Core.Evidence;
 using Cua.Core.Hitl;
+using Cua.Core.Policy;
 using Cua.Core.Redaction;
 using Cua.Core.Surface;
 using Cua.Engine.Replay;
@@ -33,7 +34,8 @@ public sealed class ReplayEngineTests : IDisposable
     {
         var redactor = Redactor.CreateDefault();
         var log = new RunLogger(_tmp, "test", redactor) { Quiet = true };
-        return (new ReplayEngine(surface,
+        var policy = new PolicyGate(new PolicyConfig { AllowedHosts = ["127.0.0.1:8080"] });
+        return (new ReplayEngine(surface, policy,
             channel ?? new FakeOperatorChannel(_ => new InterventionResolution { Resolved = false }),
             log, redactor), log);
     }
@@ -144,7 +146,8 @@ public sealed class ReplayEngineTests : IDisposable
         var (engine, log) = Engine(surface);
         using (log)
         {
-            var result = await engine.RunAsync(artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None);
+            var result = await engine.RunAsync(artifact, new Dictionary<string, string>(),
+                new ReplayOptions { AckRisk = true }, CancellationToken.None);
             Assert.Equal(RunStatus.BusinessOutcome, result.Status);
             Assert.Equal("not_permitted", result.Outcome);
             Assert.Null(result.Failure);
@@ -204,7 +207,8 @@ public sealed class ReplayEngineTests : IDisposable
         var (engine, log) = Engine(surface, channel);
         using (log)
         {
-            var result = await engine.RunAsync(artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None);
+            var result = await engine.RunAsync(artifact, new Dictionary<string, string>(),
+                new ReplayOptions { AckRisk = true }, CancellationToken.None);
             Assert.Equal(RunStatus.Success, result.Status);
             Assert.True(result.HumanAssisted);
             Assert.Equal("waived", result.Outcome);
@@ -238,7 +242,8 @@ public sealed class ReplayEngineTests : IDisposable
 
         var redactor = Redactor.CreateDefault();
         using var log = new RunLogger(_tmp, "test", redactor) { Quiet = true };
-        var engine = new ReplayEngine(surface, new QueueOperatorChannel(queueDir), log, redactor);
+        var policy = new PolicyGate(new PolicyConfig { AllowedHosts = ["127.0.0.1:8080"] });
+        var engine = new ReplayEngine(surface, policy, new QueueOperatorChannel(queueDir), log, redactor);
         var result = await engine.RunAsync(artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None);
 
         Assert.Equal(RunStatus.EscalationPending, result.Status);
@@ -515,6 +520,88 @@ public sealed class ReplayEngineTests : IDisposable
         {
             var result = await engine.RunAsync(artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None);
             Assert.Equal(RunStatus.Success, result.Status);
+        }
+    }
+
+    [Fact]
+    public async Task ReplayPolicy_BlocksEntryOutsideAllowlist_AsStructuredFailure()
+    {
+        var surface = new FakeSurface();
+        var artifact = Artifact([new StepDef { Id = "s1", Action = StepAction.Checkpoint }]) with
+        {
+            Surface = new SurfaceInfo
+            {
+                EntryUrl = "https://outside.example/",
+                Allowlist = ["outside.example"],
+            },
+        };
+        var redactor = Redactor.CreateDefault();
+        using var log = new RunLogger(_tmp, "test", redactor) { Quiet = true };
+        var policy = new PolicyGate(new PolicyConfig { AllowedHosts = ["approved.example"] });
+        var engine = new ReplayEngine(
+            surface, policy,
+            new FakeOperatorChannel(_ => new InterventionResolution { Resolved = false }),
+            log, redactor);
+
+        var result = await engine.RunAsync(
+            artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None);
+
+        Assert.Equal(RunStatus.HardFailure, result.Status);
+        Assert.Equal("(navigation)", result.Failure!.StepId);
+        Assert.Empty(surface.ActionLog);
+    }
+
+    [Fact]
+    public async Task RuntimeRiskUpgrade_RequiresConfirmation_ForUnderDeclaredCommitClick()
+    {
+        var surface = new FakeSurface();
+        surface.Present.Add(FakeSurface.Key([], "#commit"));
+        surface.ClickHandlers["#commit"] = (s, _) => s.Present.Add(FakeSurface.Key([], "#done"));
+        var channel = new FakeOperatorChannel(
+            _ => new InterventionResolution { Resolved = true, OperatorNotes = "approved" });
+        var artifact = Artifact([
+            ClickStep("s1", "#commit",
+            [
+                new AssertionDef
+                {
+                    Classify = AssertionClass.Success,
+                    When = new ConditionDef { By = ConditionKind.Css, Value = "#done" },
+                },
+            ]),
+        ]);
+
+        var (engine, log) = Engine(surface, channel);
+        using (log)
+        {
+            var result = await engine.RunAsync(
+                artifact, new Dictionary<string, string>(),
+                new ReplayOptions { AckRisk = false }, CancellationToken.None);
+
+            Assert.Equal(RunStatus.Success, result.Status);
+            Assert.Single(channel.Requests);
+            Assert.Contains("irreversible", channel.Requests[0].Reason);
+            Assert.Equal(1, surface.ClickCounts["#commit"]);
+        }
+    }
+
+    [Fact]
+    public async Task SurfaceException_IsReturnedAsStructuredHardFailure()
+    {
+        var surface = new FakeSurface
+        {
+            NavigateError = new InvalidOperationException("target process exited"),
+        };
+        var artifact = Artifact([new StepDef { Id = "s1", Action = StepAction.Checkpoint }]);
+
+        var (engine, log) = Engine(surface);
+        using (log)
+        {
+            var result = await engine.RunAsync(
+                artifact, new Dictionary<string, string>(), new ReplayOptions(), CancellationToken.None);
+
+            Assert.Equal(RunStatus.HardFailure, result.Status);
+            Assert.Equal("(runtime)", result.Failure!.StepId);
+            Assert.Contains("target process exited", result.Failure.Observed);
         }
     }
 }
